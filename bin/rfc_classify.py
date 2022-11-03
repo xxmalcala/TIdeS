@@ -92,7 +92,7 @@ def rfc_classify_query(query_orf_tsv, taxon_code, taxon_dir, rfc, RF = True):
     q_preds_brief = rfc.predict(q_cdns)
 
     ### Need to link all pORFs with their probs, not just "positives"
-    positive_pred_pos = [p for p, c in enumerate(q_preds) if c == 1]
+    positive_pred_pos = [p for p, c in enumerate(q_pred_brief) if c == 1]
 
     q_pred_eval = q_preds[positive_pred_pos]
     q_genes_eval = q_genes[positive_pred_pos]
