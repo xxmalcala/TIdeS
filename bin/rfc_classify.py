@@ -57,7 +57,7 @@ def train_rfc(train_orf_tsv):
         n_jobs = -1)
 
     CV_rfc.fit(x_train, y_train)
-    print(CV_rfc.best_params_)
+    # print(CV_rfc.best_params_)
 
     rfc = RandomForestClassifier(random_state = 42, **CV_rfc.best_params_)
     rfc.fit(x_train, y_train)
