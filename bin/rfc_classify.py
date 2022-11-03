@@ -4,7 +4,6 @@ from collections import defaultdict
 from pathlib import Path
 
 from Bio import SeqIO
-
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import (train_test_split,
                                     GridSearchCV)
@@ -54,7 +53,8 @@ def train_rfc(train_orf_tsv):
     CV_rfc = GridSearchCV(
         estimator = RandomForestClassifier(random_state = 42),
         param_grid = param_grid,
-        cv = 5)
+        cv = 5,
+        n_jobs = -1)
 
     CV_rfc.fit(x_train, y_train)
     print(CV_rfc.best_params_)
@@ -92,7 +92,7 @@ def rfc_classify_query(query_orf_tsv, taxon_code, taxon_dir, rfc, RF = True):
     q_preds_brief = rfc.predict(q_cdns)
 
     ### Need to link all pORFs with their probs, not just "positives"
-    positive_pred_pos = [p for p, c in enumerate(q_preds) if c[-1] > c[0]]
+    positive_pred_pos = [p for p, c in enumerate(q_preds) if c == 1]
 
     q_pred_eval = q_preds[positive_pred_pos]
     q_genes_eval = q_genes[positive_pred_pos]
@@ -135,7 +135,7 @@ def rfc_filter_orfs(fasta_file, taxon_code, tides_out_dir, rfc_call_tsv, rfc = N
 
     rfc_seqs = [i.split('\t')[0] for i in open(rfc_call_tsv).readlines()[1:]]
 
-    rfc_filt_fas = f'{tides_out_dir}{taxon_code}.TIdeS_Pred.fas'
+    rfc_filt_fas = f'{tides_out_dir}{taxon_code}.XGB.TIdeS_Pred.fas'
 
     with open(rfc_filt_fas, 'w+') as w:
         for i in SeqIO.parse(fasta_file,'fasta'):
