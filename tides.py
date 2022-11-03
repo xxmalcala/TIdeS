@@ -245,13 +245,7 @@ if __name__ == '__main__':
             print('Use "tides.py -h" for more information.\n')
             sys.exit()
 
-
-    if not args.train_rfc:
-        print(f'\nFinal TIdeS predictions can be found: {taxon_dir}\n\nThanks ' \
-            'for using TIdeS!\n')
-    else:
-        print(f'\nFinal TIdeS trained RFC model can be found: {taxon_dir}\n\nThanks ' \
-            'for using TIdeS!\n')
+    print(f'\nCompressing TIdeS predictions: {taxon_dir}')
 
     if args.gzip:
         import subprocess
@@ -259,3 +253,10 @@ if __name__ == '__main__':
 
         dmnd_call = subprocess.call(tar_cmd, shell=True,
             stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+
+    if not args.train_rfc:
+        print(f'\nFinal TIdeS predictions can be found: {taxon_dir}\n\nThanks ' \
+            'for using TIdeS!\n')
+    else:
+        print(f'\nFinal TIdeS trained RFC model can be found: {taxon_dir}\n\nThanks ' \
+            'for using TIdeS!\n')
