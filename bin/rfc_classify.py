@@ -16,10 +16,11 @@ This is intended to provide a more robust means to analyze young lineage-specifi
 genes derived from traditionally "noisy" transcriptomic (RNA-seq) data."""
 
 
-def parse_known_ORF_table(train_orf_tsv):
+def parse_known_ORF_table(train_orf_tsv, contam = False):
     orf_df = pd.read_table(train_orf_tsv, header = 0)
 
-    orf_df = orf_df.sort_values(orf_df.columns[1])
+    orf_df = orf_df.sample(frac=1)
+    # orf_df = orf_df.sort_values(orf_df.columns[1])
 
     # Grab the appropriate data from dataframe (col-1 is the categorization)
     orf_rfs = orf_df[orf_df.columns[1]]
@@ -31,21 +32,21 @@ def parse_known_ORF_table(train_orf_tsv):
         print('WARNING: Too few categorized data to train confidently.'
             ' Results likely to be biased.')
 
+    # return orf_cdns[:500], orf_rfs[:500]
     return orf_cdns, orf_rfs
 
 
 def train_rfc(train_orf_tsv):
     x, y = parse_known_ORF_table(train_orf_tsv)
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 42)
 
     # Parameters to try with GridSearchCV.
     param_grid = {
-        'n_estimators': [200, 500, 1000, 2000],
-        'max_features': ['sqrt', 'log2'],
+        'n_estimators': [200, 500, 1000],
+        'max_features': ['sqrt', 0.2, 0.3, 0.4],
         'min_samples_split': [5],
-        'min_samples_leaf': [10,20,30],
-        'max_depth' : [4,6,8,12],
+        'max_depth' : [4,6,8,10],
         'criterion' :['gini', 'entropy'],
         'n_jobs': [-1]}
 
@@ -57,7 +58,7 @@ def train_rfc(train_orf_tsv):
         n_jobs = -1)
 
     CV_rfc.fit(x_train, y_train)
-    # print(CV_rfc.best_params_)
+    print(CV_rfc.best_params_)
 
     rfc = RandomForestClassifier(random_state = 42, **CV_rfc.best_params_)
     rfc.fit(x_train, y_train)
@@ -102,10 +103,10 @@ def rfc_classify_query(query_orf_tsv, taxon_code, taxon_dir, rfc, RF = True):
     for i in preds_to_eval:
         best_q_preds[i[0].split("_Len")[0]].append(i)
 
-    if RF:
-        rfc_call_tsv = f'{tides_out_dir}{taxon_code}.ORF_RF_Call_ALL.RFC.tsv'
-    else:
-        rfc_call_tsv = f'{tides_out_dir}{taxon_code}.NonContam.RFC.tsv'
+        if RF:
+            rfc_call_tsv = f'{tides_out_dir}{taxon_code}.ORF_RF_Call_ALL.RFC.tsv'
+        else:
+            rfc_call_tsv = f'{tides_out_dir}{taxon_code}.NonContam.RFC.tsv'
 
     with open(rfc_call_tsv,'w+') as w:
         w.write('Gene\tRFC_Call\tORF_Prob_Cat_0\tORF_Prob_Cat_1\n')
@@ -135,7 +136,7 @@ def rfc_filter_orfs(fasta_file, taxon_code, tides_out_dir, rfc_call_tsv, rfc = N
 
     rfc_seqs = [i.split('\t')[0] for i in open(rfc_call_tsv).readlines()[1:]]
 
-    rfc_filt_fas = f'{tides_out_dir}{taxon_code}.XGB.TIdeS_Pred.fas'
+    rfc_filt_fas = f'{tides_out_dir}{taxon_code}.TIdeS_Pred.fas'
 
     with open(rfc_filt_fas, 'w+') as w:
         for i in SeqIO.parse(fasta_file,'fasta'):
