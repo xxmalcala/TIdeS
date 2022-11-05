@@ -6,10 +6,12 @@ from Bio import SeqIO
 
 
 def dmnd_blast(fasta_file, ref_genome):
-    dmnd_cmd = 'diamond blastx -k 1 ' \
+    dmnd_cmd = 'diamond blastx -k 1 --quiet ' \
         f'-q {fasta_file} ' \
         f'-d {ref_genome} ' \
         f'-o {fasta_file.split("/")[-1].split(".fas")[0]}.RefGenome.tsv ' \
+        '--sensitive ' \
+        '--query-cover 0.6 --subject-cover 0.6 ' \
         '-f 6 qseqid qlen sseqid slen pident length qstart qend sstart send qframe'
 
     os.system(dmnd_cmd)
