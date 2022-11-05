@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import glob, shutil, subprocess, sys
 from pathlib import Path
 from Bio import SeqIO
@@ -126,26 +124,5 @@ def filter_txpts(fasta_file, taxon_code, min_length, threads):
                     taxon_code,
                     rRNA_dir,
                     min_length)
-                    
+
     return filt_trxme, out_dir
-
-# Update with optional ARGPARSE!
-if __name__ == '__main__':
-    if len(sys.argv[1:]) >= 2:
-        fasta_file = sys.argv[1]
-        taxon_code = sys.argv[2]
-        try:
-            min_length = int(sys.argv[3])
-        except IndexError:
-            min_length = 300
-        try:
-            threads = int(sys.argv[4])
-        except IndexError:
-            threads = 4
-    else:
-        print('Usage:\n    python3 filter_trans.py [FASTA-FILE] [TAXON-CODE] '
-                '[MIN-TRANSCRIPT-LENGTH (default = 300bp)]\n')
-        sys.exit(1)
-
-    filter_txpts(fasta_file, taxon_code, min_length = 300, threads = 4)
-    # print(filt_trxme)
