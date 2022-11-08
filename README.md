@@ -41,8 +41,8 @@ To see all options:
 - [x] Determine most useful set of composition criteria on broad phylogenomic scale (euks for now)
 - [X] Automate TIdeS pipeline
 - [ ] Support "partial" ORFs
-- [ ] tarball packaging
-- [ ] Rethinking folder(s) structure and outputs...
+- [X] tarball packaging
+- [X] Rethinking folder(s) structure and outputs...
 - [ ] Support translation tables by NAME too, not just number (e.g. "Universal", "Ciliate", etc)
 - [ ] Conda and PyPi packaging
 - [ ] Prepare exemplar issues as examples (Orientation for now...)
