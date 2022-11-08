@@ -4,7 +4,7 @@
 
 ## Motivation
 
-Many projects simply use the "longest" complete ORF (using tools such as TransDecoder) prior to phylogenomic studies. This has many potential implications on the results, especially when identifying lineage-specific gene families (LSGFs) from transcriptomic data, given the partial nature of most RNA-seq approaches.
+Many projects simply use the "longest" complete ORF (using tools such as GetORF) prior to phylogenomic studies. This has many potential implications on the results, especially when identifying lineage-specific gene families (LSGFs) from transcriptomic data, given the partial nature of most RNA-seq approaches.
 
 **TIdeS** uses a Random Forest Classifier to select the most "likely" open reading frame(s) from a transcript. After aligning transcripts against a protein database, TIdeS accounts for the composition of alignable ORFs to infer **complete** putative ORFs (pORFs) from the transcriptome.
 
