@@ -6,7 +6,7 @@
 
 Many projects simply use the "longest" complete ORF (using tools such as TransDecoder) prior to phylogenomic studies. This has many potential implications on the results, especially when identifying lineage-specific gene families (LSGFs) from transcriptomic data, given the partial nature of most RNA-seq approaches.
 
-**TIdeS** uses a Random Forest Classifiers to select the most "likely" open reading frame(s) from a transcript. After aligning transcripts against a protein database, TIdeS accounts for the composition of alignable ORFs to infer **complete** putative ORFs (pORFs) from the transcriptome.
+**TIdeS** uses a Random Forest Classifier to select the most "likely" open reading frame(s) from a transcript. After aligning transcripts against a protein database, TIdeS accounts for the composition of alignable ORFs to infer **complete** putative ORFs (pORFs) from the transcriptome.
 
 In practice, this may also extend towards extraction of transcripts from a targeted taxon in a contaminated transcriptome... Development for this is TBD.
 
@@ -46,3 +46,4 @@ To see all options:
 - [ ] Support translation tables by NAME too, not just number (e.g. "Universal", "Ciliate", etc)
 - [ ] Conda and PyPi packaging
 - [ ] Prepare exemplar issues as examples (Orientation for now...)
+- [ ] Prepare manual/wiki (numerous options and things to note now)
