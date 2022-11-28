@@ -238,7 +238,6 @@ if __name__ == '__main__':
         if (args.db or args.orfs or args.rfc or args.train_rfc):
             if args.orfs:
                 args.train_rfc = True
-            print(args)
             # sys.exit()
             taxon_dir = classify_pORFs(args)
         # if args.db == args.rfc == None and args.train == False:

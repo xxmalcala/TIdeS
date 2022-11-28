@@ -39,14 +39,19 @@ def parse_known_ORF_table(train_orf_tsv, contam = False):
 def train_rfc(train_orf_tsv):
     x, y = parse_known_ORF_table(train_orf_tsv)
 
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 42)
+    x_train, x_test, y_train, y_test = train_test_split(
+                                            x,
+                                            y,
+                                            test_size = 0.2,
+                                            random_state = 42,
+                                            stratify = y)
 
     # Parameters to try with GridSearchCV.
     param_grid = {
         'n_estimators': [200, 500, 1000],
-        'max_features': ['sqrt', 0.2, 0.3, 0.4],
+        'max_features': ['sqrt', 'log2'],
         'min_samples_split': [5],
-        'max_depth' : [4,6,8,10],
+        'max_depth' : [4,8,12,16],
         'criterion' :['gini', 'entropy'],
         'n_jobs': [-1]}
 
@@ -58,7 +63,7 @@ def train_rfc(train_orf_tsv):
         n_jobs = -1)
 
     CV_rfc.fit(x_train, y_train)
-    print(CV_rfc.best_params_)
+    # print(CV_rfc.best_params_)
 
     rfc = RandomForestClassifier(random_state = 42, **CV_rfc.best_params_)
     rfc.fit(x_train, y_train)
