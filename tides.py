@@ -18,13 +18,14 @@ def collect_args():
 
     required_arg_group.add_argument('--fin', '-i', action = 'store',
         metavar = '[FASTA File]', type = str, required = True,
-        help = ' Transcriptome FASTA file.\n\n')
+        help = ' FASTA file of transcripts or ORFs.\n\n')
 
     required_arg_group.add_argument('--taxon-name','-n', nargs='+',
         action = 'store', metavar = '[Taxon]', type = str, required = True,
         help=" Taxon name or PhyloToL taxon-code.\n")
 
     porf_arg_group = parser.add_argument_group('TIdeS ORF-Calling Options')
+
     porf_arg_group.add_argument('--db','-d', action = 'store',
         metavar = '[Protein Database]', type = str,
         help = ' Path to protein database.\n\n')\
@@ -40,9 +41,9 @@ def collect_args():
     porf_arg_group.add_argument('--stranded','-st', action = 'store_true',
         help = ' Transcripts are stranded (consider RFs +1 to +3).\n\n')
 
-    porf_arg_group.add_argument('--orfs','-orfs', action = 'store',
-        metavar = '[Training-ORF FASTA File]', type = str,
-        help = ' User-defined "true" ORFs to be used for training.\n\n')
+    porf_arg_group.add_argument('--orfs','-orfs', action = 'store_true',
+        help = ' FASTA file input contains user-defined "true" ORFs to be used for training.\n\n')
+
 
     contam_arg_group = parser.add_argument_group('TIdeS Contamination-Calling Options')
 
@@ -107,8 +108,21 @@ def classify_pORFs(args):
                             args.min_len,
                             args.threads)
 
-    if not args.rfc:
-        if not args.orfs:
+    if args.orfs:
+        Path(f'{taxon_dir}ORF_Calling').mkdir(parents = True, exist_ok = True)
+        ref_orfs = f'{taxon_dir}ORF_Calling/{filt_fas.split("/")[-1]}'
+        shutil.copy2(filt_fas, ref_orfs)
+
+    else:
+        print('Calling "complete" ORFs.')
+        query_orf_fas = co.call_orfs(
+                            filt_fas,
+                            taxon_dir,
+                            args.genetic_code,
+                            True,
+                            False,
+                            args.min_len)
+        if not args.rfc:
             print(f'Generating set of reference ORFs.')
             ref_orfs = dms.extract_orf_hits(
                             filt_fas,
@@ -117,25 +131,11 @@ def classify_pORFs(args):
                             taxon_dir,
                             args.threads,
                             args.evalue)
-        else:
-            Path(f'{taxon_dir}ORF_Calling').mkdir(parents = True, exist_ok = True)
-            ref_orfs = f'{taxon_dir}ORF_Calling/{args.orfs}'
-            shutil.copy2(args.orfs, ref_orfs)
 
-
+    if not args.rfc:
         print(f'Generating mixed orientation data for: {ref_orfs.split("/")[-1]}')
         ref_rand_orfs = rando.gen_rand_orientation(ref_orfs)
 
-    print('Calling "complete" ORFs.')
-    query_orf_fas = co.call_orfs(
-                        filt_fas,
-                        taxon_dir,
-                        args.genetic_code,
-                        True,
-                        False,
-                        args.min_len)
-
-    if not args.rfc:
         print('Generating codon counts for training data.')
         train_orf_tsv = ccnt.codon_counts_fasta(
                                 ref_rand_orfs,
@@ -154,6 +154,7 @@ def classify_pORFs(args):
                                 False)
     else:
         query_orf_tsv = None
+        query_orf_fas = None
     # reorganize inputs for consistency...
 
     rfc_fas = rfcc.classify_seqs(
@@ -230,12 +231,15 @@ if __name__ == '__main__':
 
     if args.contam:
         print(args.contam)
-        # sys.exit()
+        sys.exit()
         taxon_dir = classify_contam(args)
 
     else:
-
         if (args.db or args.orfs or args.rfc or args.train_rfc):
+            if args.orfs:
+                args.train_rfc = True
+            print(args)
+            # sys.exit()
             taxon_dir = classify_pORFs(args)
         # if args.db == args.rfc == None and args.train == False:
         else:
@@ -245,12 +249,11 @@ if __name__ == '__main__':
             print('Use "tides.py -h" for more information.\n')
             sys.exit()
 
-    print(f'\nCompressing TIdeS predictions: {taxon_dir}')
-
     if args.gzip:
         import subprocess
         tar_cmd = f'tar -zcvf {taxon_dir.rstrip("/")}.tar.gz {taxon_dir}'
 
+        print(f'\nCompressing TIdeS predictions: {taxon_dir}')
         dmnd_call = subprocess.call(tar_cmd, shell=True,
             stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
