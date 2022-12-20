@@ -97,17 +97,6 @@ def rfc_classify_query(query_orf_tsv, taxon_code, taxon_dir, rfc, RF = True):
     q_preds = rfc.predict_proba(q_cdns)
     q_preds_brief = rfc.predict(q_cdns)
 
-    ### Need to link all pORFs with their probs, not just "positives"
-    positive_pred_pos = [p for p, c in enumerate(q_preds_brief) if c == 1]
-
-    q_pred_eval = q_preds[positive_pred_pos]
-    q_genes_eval = q_genes[positive_pred_pos]
-
-    preds_to_eval = [(i,j) for i,j in zip(q_genes_eval, q_pred_eval)]
-
-    for i in preds_to_eval:
-        best_q_preds[i[0].split("_Len")[0]].append(i)
-
     if RF:
         rfc_call_tsv = f'{tides_out_dir}{taxon_code}.ORF_RF_Call_ALL.RFC.tsv'
     else:
