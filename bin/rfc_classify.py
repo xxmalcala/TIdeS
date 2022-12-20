@@ -16,7 +16,7 @@ This is intended to provide a more robust means to analyze young lineage-specifi
 genes derived from traditionally "noisy" transcriptomic (RNA-seq) data."""
 
 
-def parse_known_ORF_table(train_orf_tsv, contam = False):
+def parse_known_ORF_table(train_orf_tsv, contam):
     orf_df = pd.read_table(train_orf_tsv, header = 0)
 
     orf_df = orf_df.sample(frac=1)
@@ -28,16 +28,16 @@ def parse_known_ORF_table(train_orf_tsv, contam = False):
 
     # Put a check in for smallest category for RFC_Model
     min_y_cnts = min(orf_rfs.value_counts())
-    if min_y_cnts < 100:
-        print('WARNING: Too few categorized data to train confidently.'
-            ' Results likely to be biased.')
+    if min_y_cnts < 100 and not contam:
+        print(f'WARNING: Only {min_y_cnts} training sequences are provided. '
+            'Too few categorized data to train confidently. Results likely to be biased.')
 
     # return orf_cdns[:500], orf_rfs[:500]
     return orf_cdns, orf_rfs
 
 
-def train_rfc(train_orf_tsv):
-    x, y = parse_known_ORF_table(train_orf_tsv)
+def train_rfc(train_orf_tsv, contam = False):
+    x, y = parse_known_ORF_table(train_orf_tsv, contam)
 
     x_train, x_test, y_train, y_test = train_test_split(
                                             x,
@@ -108,25 +108,35 @@ def rfc_classify_query(query_orf_tsv, taxon_code, taxon_dir, rfc, RF = True):
     for i in preds_to_eval:
         best_q_preds[i[0].split("_Len")[0]].append(i)
 
-        if RF:
-            rfc_call_tsv = f'{tides_out_dir}{taxon_code}.ORF_RF_Call_ALL.RFC.tsv'
-        else:
-            rfc_call_tsv = f'{tides_out_dir}{taxon_code}.NonContam.RFC.tsv'
+    if RF:
+        rfc_call_tsv = f'{tides_out_dir}{taxon_code}.ORF_RF_Call_ALL.RFC.tsv'
+    else:
+        rfc_call_tsv = f'{tides_out_dir}{taxon_code}.NonContam.RFC.tsv'
+
+    pos = 0
 
     with open(rfc_call_tsv,'w+') as w:
-        w.write('Gene\tRFC_Call\tORF_Prob_Cat_0\tORF_Prob_Cat_1\n')
-        for k, v in best_q_preds.items():
-            g = max(v, key=lambda x: x[-1][-1])
-            if g[-1][-1] > g[-1][0]:
+        if RF:
+            w.write('Gene\tRFC_Call\tORF_Prob_Cat_0\tORF_Prob_Cat_1\n')
+        else:
+            w.write('Gene\tRFC_Call\tORF_Prob_Contaminant\tORF_Prob_Clean\n')
+
+        for i in q_genes:
+            prob_0 = q_preds[pos][0]
+            prob_1 = q_preds[pos][-1]
+
+            if  prob_1 > prob_0:
                 ev = '1'
             else:
                 ev = '0'
-            w.write(f'{g[0]}\t{ev}\t{g[1][0]:.3f}\t{g[1][-1]:.3f}\n')
+            pos += 1
+
+            w.write(f'{i}\t{ev}\t{prob_0:.3f}\t{prob_1:.3f}\n')
 
     return tides_out_dir, rfc_call_tsv
 
 
-def rfc_filter_orfs(fasta_file, taxon_code, tides_out_dir, rfc_call_tsv, rfc = None, RF = True):
+def rfc_filter_orfs(fasta_file, taxon_code, tides_out_dir, rfc_call_tsv, RF = True):
     """
     Filters pORFs/transcripts from a single FASTA file based on TIdeS predictions.
 
@@ -139,7 +149,7 @@ def rfc_filter_orfs(fasta_file, taxon_code, tides_out_dir, rfc_call_tsv, rfc = N
     :return: TIdeS predicted ORFs (FASTA format).
     """
 
-    rfc_seqs = [i.split('\t')[0] for i in open(rfc_call_tsv).readlines()[1:]]
+    rfc_seqs = [i.split('\t')[0] for i in open(rfc_call_tsv).readlines()[1:] if i.split('\t')[1] == '1']
 
     rfc_filt_fas = f'{tides_out_dir}{taxon_code}.TIdeS_Pred.fas'
 
@@ -178,9 +188,14 @@ def classify_seqs(train_orf_tsv, query_orf_tsv, fasta_file, taxon_dir, taxon_cod
     :return: TIdeS predicted ORFs (FASTA format).
     """
 
+    if not RF:
+        contam = True
+    else:
+        contam = False
+
     if not rfc:
         print('Training TIdeS.')
-        trained_rfc = train_rfc(train_orf_tsv)
+        trained_rfc = train_rfc(train_orf_tsv, contam)
     else:
         import pickle
         trained_rfc = pickle.load(open(rfc, 'rb'))
