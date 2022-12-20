@@ -220,7 +220,7 @@ def classify_contam(args):
 
     if not args.train_rfc:
         shutil.copy2(rfc_fas, taxon_dir)
-        shutil.copy2(rfc_fas.replace("fas","Contam.fas"), taxon_dir)
+        # shutil.copy2(rfc_fas.replace("fas","Contam.fas"), taxon_dir)
 
     return taxon_dir
 
@@ -231,7 +231,7 @@ if __name__ == '__main__':
 
     if args.contam:
         print(args.contam)
-        sys.exit()
+        # sys.exit()
         taxon_dir = classify_contam(args)
 
     else:
