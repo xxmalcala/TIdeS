@@ -295,14 +295,34 @@ def randomize_orientation(ref_orf_dict: dict) -> dict:
 
     return rnd_ornt
 
+def calc_gc(ntds: str) -> float:
+    return (ntds.count('G')+ntds.count('C'))/len(ntds)
 
-def freq_counts(orf_dict, kmer = 3, overlap = False):
+def additional_stats(kmer_counts: list) -> dict:
+    dgn_cdns = ['CT','GT','TG','CC','AC','GC','CG','GG']
+    st_dict = {}
+
+    st_dict['gc3_dgn'] = calc_gc(''.join([i[-1] for i in kmer_counts if i[:2] in dgn_cdns]))
+    st_dict['gc1'] = calc_gc(''.join([i[0] for i in kmer_counts]))
+    st_dict['gc2'] = calc_gc(''.join([i[1] for i in kmer_counts]))
+    st_dict['gc3'] = calc_gc(''.join([i[2] for i in kmer_counts]))
+    st_dict['gc_global'] = calc_gc(''.join(kmer_counts))
+
+    return st_dict
+
+def freq_counts(orf_dict: dict, kmer: int = 3, overlap: bool = False) -> dict:
     kmer_set = [''.join(i) for i in product(['A','T','G','C'], repeat = kmer)]
     orf_kmer_dict = {}
+
     for k, v in orf_dict.items():
         if not overlap:
             kmer_list = [v[n:n+kmer] for n in range(0, len(v), kmer)]
+
         orf_kmer_dict[k] = {kmer:kmer_list.count(kmer)/len(kmer_list) for kmer in kmer_set}
+
+        if not overlap and kmer == 3:
+            orf_kmer_dict[k].update(additional_stats(kmer_list))
+
     return orf_kmer_dict
 
 
