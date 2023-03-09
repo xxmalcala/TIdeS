@@ -96,7 +96,49 @@ def remove_rRNA(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, th
     return rRNA_clean_fas
 
 
-def filter_transcripts(txm_fas: str, txn_code: str, start_time, min_len: int = 300, threads: int = 4, pid: float = 0.97, verb: bool = True):
+def prep_contam(txm_fas: str, txn_code: str, sis_smry: str, start_time, verb: bool = True) -> dict:
+    backup_dir = f'{txn_code}_TIdeS/Original/'
+    eval_seq_fas = f'{backup_dir}{txn_code}.EvalSeqs.fas'
+
+    if verb:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Backing up data for {txn_code}')
+
+    prep_dir(backup_dir)
+    shutil.copy2(txm_fas, backup_dir)
+    shutil.copy2(sis_smry, backup_dir)
+
+    if verb:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Parsing target/non-target assignments')
+
+    seq_summary = {i.split('\t')[0]:i.rstrip().split('\t')[1].lower() for i in open(sis_smry).readlines()[1:]}
+
+    if verb:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Saving target/non-target sequences')
+
+    targ_seqs, non_targ_seqs = {}, {}
+
+    with open(eval_seq_fas, 'w+') as w:
+        for i in SeqIO.parse(txm_fas, 'fasta'):
+            try:
+                if seq_summary[i.id] == 'target':
+                    w.write(f'>{i.id}_Target\n{i.seq.upper()}\n')
+                    targ_seqs[f'{i.id}_Target'] = f'{i.seq.upper()}'
+
+                else:
+                    w.write(f'>{i.id}_NonTarget\n{i.seq.upper()}\n')
+                    non_targ_seqs[f'{i.id}_NonTarget'] = f'{i.seq.upper()}'
+
+            except KeyError:
+                continue
+
+    if min([len(targ_seqs), len(non_targ_seqs)]) < 100:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
+            'Fewer than 100 examples of target and non-target sequences were assigned.')
+
+    return targ_seqs, non_targ_seqs
+
+
+def filter_transcripts(txm_fas: str, txn_code: str, start_time, min_len: int = 300, threads: int = 4, pid: float = 0.97, verb: bool = True) -> str:
     backup_dir = f'{txn_code}_TIdeS/Original/'
     filt_len_dir = f'{txn_code}_TIdeS/Filter_Steps/Length_Filter/'
     clust_dir = f'{txn_code}_TIdeS/Filter_Steps/Clustering/'

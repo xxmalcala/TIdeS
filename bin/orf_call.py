@@ -60,7 +60,6 @@ def bin_pos(cdn_pos: list, rf: dict, std: str) -> dict:
     rf_adj = 0
     if std == '-':
         rf_adj += 3
-
     for i in cdn_pos:
         if i % 3 == 0:
             rf[1 + rf_adj].append(i)
@@ -68,7 +67,6 @@ def bin_pos(cdn_pos: list, rf: dict, std: str) -> dict:
             rf[2 + rf_adj].append(i)
         else:
             rf[3 + rf_adj].append(i)
-
     return rf
 
 
@@ -94,14 +92,27 @@ def eval_coords(strt_coords: np.ndarray, stp_coords:  np.ndarray, rframe: int, m
         for pos in valid_stops:
             try:
                 if rframe > 3:
-                    new_start = strt_coords[strt_coords >= pos[0]]
-                    new_start = new_start[new_start <= pos[1]].max()
-                    if new_start - pos[0] >= min_len:
-                        porf_coords.append((new_start, pos[0]))
+                    tmp_start = [i for i in strt_coords[strt_coords <= pos[1]] if (i - pos[0]) >= min_len]
+                    porf_coords.append((max(tmp_start), pos[0]))
+                    porf_coords += [(tmp_start[n+1], pos[0]) for n in range(len(tmp_start)-1)
+                                    if (tmp_start[n+1] - tmp_start[n]) > 44
+                                    and (pos[1] - tmp_start[n+1]) >= min_len]
+
+                    # new_start = strt_coords[strt_coords >= pos[0]]
+                    # new_start = new_start[new_start <= pos[1]].max()
+                    # if new_start - pos[0] >= min_len:
+                    #     porf_coords.append((new_start, pos[0]))
+
                 else:
-                    new_start = strt_coords[strt_coords >= pos[0]].min()
-                    if pos[1] - new_start >= min_len:
-                        porf_coords.append((new_start, pos[1]))
+                    tmp_start = [i for i in strt_coords[strt_coords >= pos[0]] if (pos[1] - i) >= min_len]
+                    porf_coords.append((min(tmp_start), pos[1]))
+                    porf_coords += [(tmp_start[n+1], pos[1]) for n in range(len(tmp_start)-1)
+                                    if (tmp_start[n+1] - tmp_start[n]) > 44
+                                    and (pos[1] - tmp_start[n+1]) >= min_len]
+
+                    # new_start = strt_coords[strt_coords >= pos[0]].min()
+                    # if pos[1] - new_start >= min_len:
+                    #     porf_coords.append((new_start, pos[1]))
 
             except ValueError:
                 pass
@@ -160,7 +171,6 @@ def extract_orfs(seq: str, stp_cdns: list, min_len: int) -> list:
 
         if stp_coords and strt_coords:
             stp_coords.sort()
-
             stp_coords = np.array(stp_coords)
             strt_coords = np.array(strt_coords)
 
@@ -196,6 +206,7 @@ def call_all_orfs(fasta_file: str, txn_code: str, gcode: str, min_len: int) -> s
                     orf_num += 1
 
     return orf_calls
+
 
 def trim_seq(seq: str, rf: int) -> str:
     temp = seq[rf-1:]
@@ -295,35 +306,43 @@ def randomize_orientation(ref_orf_dict: dict) -> dict:
 
     return rnd_ornt
 
-def calc_gc(ntds: str) -> float:
-    return (ntds.count('G')+ntds.count('C'))/len(ntds)
 
-def additional_stats(kmer_counts: list) -> dict:
-    dgn_cdns = ['CT','GT','TG','CC','AC','GC','CG','GG']
-    st_dict = {}
-
-    st_dict['gc3_dgn'] = calc_gc(''.join([i[-1] for i in kmer_counts if i[:2] in dgn_cdns]))
-    st_dict['gc1'] = calc_gc(''.join([i[0] for i in kmer_counts]))
-    st_dict['gc2'] = calc_gc(''.join([i[1] for i in kmer_counts]))
-    st_dict['gc3'] = calc_gc(''.join([i[2] for i in kmer_counts]))
-    st_dict['gc_global'] = calc_gc(''.join(kmer_counts))
-
-    return st_dict
-
-def freq_counts(orf_dict: dict, kmer: int = 3, overlap: bool = False) -> dict:
-    kmer_set = [''.join(i) for i in product(['A','T','G','C'], repeat = kmer)]
+def freq_counts(orf_dict: dict, kmer: int = 3) -> dict:
     orf_kmer_dict = {}
+    kmer_set = [''.join(i) for i in product(['A', 'T', 'G', 'C'], repeat = kmer)]
 
     for k, v in orf_dict.items():
-        if not overlap:
-            kmer_list = [v[n:n+kmer] for n in range(0, len(v), kmer)]
-
-        orf_kmer_dict[k] = {kmer:kmer_list.count(kmer)/len(kmer_list) for kmer in kmer_set}
-
-        if not overlap and kmer == 3:
-            orf_kmer_dict[k].update(additional_stats(kmer_list))
+        kmer_list = [v[n:n+kmer] for n in range(0, len(v), kmer)]
+        orf_kmer_dict[k] = {kmer: (kmer_list.count(kmer) / len(kmer_list)) for kmer in kmer_set}
 
     return orf_kmer_dict
+
+
+def generate_contam_calls(targ_seqs: dict,
+                            non_targ_seqs: dict,
+                            fasta_file: str,
+                            txn_code: str,
+                            start_time,
+                            gcode: str = '1',
+                            kmer: int = 3,
+                            verb: bool = True):
+
+    if verb:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Preparing training and query ORFs for {txn_code}')
+
+    ref_orfs = freq_counts(targ_seqs)
+    ref_orfs.update(freq_counts(non_targ_seqs))
+
+    tmp_query = {}
+    for i in SeqIO.parse(fasta_file,'fasta'):
+        tmp_query[i.id] = f'{i.seq}'
+
+        if len(i)%3 > 0:
+            tmp_query[i.id] = f'{i.seq}'[:-(len(i)%3)]
+
+    query_orfs = freq_counts(tmp_query)
+
+    return query_orfs, ref_orfs
 
 
 def generate_orf_calls(fasta_file: str,
@@ -334,24 +353,24 @@ def generate_orf_calls(fasta_file: str,
                         min_len: int = 300,
                         threads: int = 4,
                         intermed: bool = True,
-                        contam: bool = False,
                         kmer: int = 3,
                         verb: bool = True):
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Extracting complete putative ORFs for {txn_code}')
 
+    Path(f'{txn_code}_TIdeS/ORF_Calling/').mkdir(exist_ok = True, parents = True)
+
     stp_cdns = eval_gcode_ttable(str(gcode))[:-1]
+    init_query_orfs = call_all_orfs(fasta_file, txn_code, gcode, min_len)
 
-    if not contam:
-        Path(f'{txn_code}_TIdeS/ORF_Calling/').mkdir(exist_ok = True, parents = True)
-        tmp_ref_orfs, tmp_rnd_rfs = generate_ref_orfs(fasta_file, txn_code, start_time, dmnd_db, min_len, threads, intermed, verb)
+    tmp_ref_orfs, tmp_rnd_rfs = generate_ref_orfs(fasta_file, txn_code, start_time, dmnd_db, min_len, threads, intermed, verb)
 
-        if verb:
-            print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Preparing training and query ORFs {txn_code}')
+    if verb:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Preparing training and query ORFs for {txn_code}')
 
-        # May not need ref_orfs ...
-        rnd_orfs = freq_counts(tmp_rnd_rfs)
-        query_orfs = freq_counts(call_all_orfs(fasta_file, txn_code, gcode, min_len))
+    # May not need ref_orfs ...
+    rnd_orfs = freq_counts(tmp_rnd_rfs)
+    query_orfs = freq_counts(init_query_orfs)
 
-        return query_orfs, rnd_orfs, stp_cdns[:int(len(stp_cdns)/2)]
+    return query_orfs, rnd_orfs

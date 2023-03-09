@@ -32,7 +32,6 @@ def train_rfc(X_ref_df, y_ref_df, threads: int):
                                                         test_size = 0.2,
                                                         random_state = 42,
                                                         stratify = y_ref_df)
-
     param_grid = {
         'n_estimators': [300, 500],
         'max_features': ['sqrt', 'log2'],
@@ -49,11 +48,10 @@ def train_rfc(X_ref_df, y_ref_df, threads: int):
         n_jobs = int(threads))
 
     CV_rfc.fit(X_train, y_train)
+
     rfc = RandomForestClassifier(random_state = 42, **CV_rfc.best_params_)
 
-    rfc.fit(X_train, y_train)
-
-    return rfc
+    return rfc.fit(X_train, y_train)
 
 
 def save_rfc(rfc_model, txn_code):
@@ -61,7 +59,7 @@ def save_rfc(rfc_model, txn_code):
     pickle.dump(rfc_model, open(rfc_pkl, 'wb+'))
 
 
-def process_predictions(txn_code: str, query_preds, query_df: pd.core.frame.DataFrame, contam: bool) -> dict:
+def process_predictions(txn_code: str, query_preds, query_df: pd.core.frame.DataFrame, contam: bool = False) -> dict:
 
     tds_dir = f'{txn_code}_TIdeS/Classified/'
     Path(tds_dir).mkdir(parents = True, exist_ok = True)
@@ -74,9 +72,6 @@ def process_predictions(txn_code: str, query_preds, query_df: pd.core.frame.Data
     contam_seqs = []
 
     tds_tsv = f'{tds_dir}{txn_code}.TIdeS_Summary.tsv'
-    # tds_fas = f'{tds_dir}{txn_code}.TIdeS.fas'
-    if contam:
-        tds_contam = f'{tds_dir}{txn_code}.TIdeS.NonTargetSeqs.fas'
 
     with open(tds_tsv, 'w+') as w:
         w.write(f'Gene\tTIdes_Prediction\tProb_{neg}\tProb_{pos}\n')
@@ -95,18 +90,33 @@ def process_predictions(txn_code: str, query_preds, query_df: pd.core.frame.Data
                         f'{query_preds[n][1]*100:.2f}\n')
 
     if contam:
-        with open(tds_contam, 'w+') as w:
-            for k, v in contam_seqs.items():
-                w.write(f'{k}\n{v}\n')
         return pos_pred_seqs, contam_seqs
 
-    return pos_pred_seqs
+    return best_porf(pos_pred_seqs, tds_tsv)
+
+
+def best_porf(pos_pred_seqs, tds_tsv):
+    final_pORFs = []
+
+    from collections import defaultdict
+    top_porfs = defaultdict(list)
+
+    for line in open(tds_tsv).readlines():
+        if '\tCRF\t' in line:
+            txpt = line.split('\t')[0].split('.pORF')[0]
+            top_porfs[txpt].append((line.split('\t')[0],float(line.split('\t')[-1])))
+
+    for k, v in top_porfs.items():
+        top_conf = max(v,key=lambda item:item[1])[-1]
+        final_pORFs += [i[0] for i in v if i[1] == top_conf]
+
+    return pos_pred_seqs, final_pORFs
+
 
 
 def classify_orfs(txn_code: str,
                     train_orfs: dict,
                     query_orfs: dict,
-                    stp_cdns: list,
                     start_time,
                     pretrained: str = None,
                     threads: int = 4,
@@ -142,9 +152,8 @@ def classify_orfs(txn_code: str,
         return target_seqs, contam_seqs
 
     else:
-        crf_seqs = process_predictions(txn_code, query_preds, query_df, contam)
+        return process_predictions(txn_code, query_preds, query_df)
 
-        return crf_seqs
     # return process_predictions(txn_code, query_preds, query_df, contam)
 
 #
