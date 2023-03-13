@@ -29,7 +29,7 @@ def finalize_outputs(txn_code: str,  ref_orf_fas: str, imp_orfs: list, minor_orf
     with open(imp_orf_fas.replace("fas","AA.fas"), 'w+') as w:
         tds_psa = oc.translate_seqs(tds_ps, gcode)
         for k, v in tds_psa.items():
-                w.write(f'{k}\n{v}\n')
+                w.write(f'>{k}\n{v}\n')
 
     shutil.copy2(imp_orf_fas, f'{txn_code}_TIdeS/')
     shutil.copy2(imp_orf_fas.replace("fas","AA.fas"), f'{txn_code}_TIdeS/')
