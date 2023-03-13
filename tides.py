@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-import glob, os, shutil, sys, time
+import argparse, glob, os, shutil, sys, time
+
+from argparse import RawTextHelpFormatter, SUPPRESS
 from datetime import timedelta
 from Bio import SeqIO
 
@@ -10,8 +12,89 @@ from bin import classify_orfs as cl
 from bin import save_preds as sp
 
 
-# def check_args() -> class:
-#     pass
+def collect_args():
+    parser = argparse.ArgumentParser(description = f'{ascii_msg()}\n     TIdeS ' \
+            'leverages supervised machine-learning to hunt\n     ' \
+            'and select "optimal" putative ORFs (pORFs) from a given\n     ' \
+            'transcriptome and can infer ORFs from a target taxon\n     ' \
+            'from "noisy" (e.g. scRNA-seq) datasets.',
+            formatter_class=RawTextHelpFormatter)
+
+    # Set of required options for the script
+    required_arg_group = parser.add_argument_group('Input-Output Options')
+
+    required_arg_group.add_argument('--fin', '-i', action = 'store',
+        metavar = '[FASTA File]', type = str, required = True,
+        help = ' FASTA file of transcripts or ORFs.\n\n')
+
+    required_arg_group.add_argument('--taxon-name','-n', nargs='+',
+        action = 'store', metavar = '[Taxon]', type = str, required = True,
+        help=" Taxon name or PhyloToL taxon-code.\n")
+
+    porf_arg_group = parser.add_argument_group('TIdeS ORF-Calling Options')
+
+    porf_arg_group.add_argument('--db','-d', action = 'store',
+        metavar = '[Protein Database]', type = str,
+        help = ' Path to protein database.\n\n')\
+
+    porf_arg_group.add_argument('--genetic-code','-g', action = 'store',
+        default = 1, metavar = '[Genetic-Code]', type = int,
+        help = ' NCBI supported translation table (default = 1).\n\n')
+
+    porf_arg_group.add_argument('--evalue','-e', action = 'store',
+        default = 1e-30, metavar = '[e-value]', type = float,
+        help = ' E-value for reference ORF calling (default = 1e-30)\n\n')
+
+    # porf_arg_group.add_argument('--stranded','-st', action = 'store_true',
+    #     help = ' Transcripts are stranded (consider RFs +1 to +3).\n\n')
+
+    # porf_arg_group.add_argument('--orfs','-orfs', action = 'store_true',
+    #     help = ' FASTA file input contains user-defined "true" ORFs to be used for training.\n\n')
+
+
+    contam_arg_group = parser.add_argument_group('TIdeS Contamination-Calling Options')
+
+    contam_arg_group.add_argument('--contam','-c', #action = 'store_true',
+        nargs='?', const = 'All',
+        help = 'Default accounts for all non-same-minor clade sequences,\n' \
+        'otherwise provide a comma-separated list of contaminant\ntaxon-codes. ' \
+        '(e.g. EE_cr_Gthe,Sr_st).\n\n')
+
+    contam_arg_group.add_argument('--sister-table','-s', action = 'store',
+        metavar = '[Sister-Relationship Table]', type = str,
+        help = ' Run contamination pipeline... (TO UPDATE)\n')
+
+    optional_arg_group = parser.add_argument_group('General Options')
+    optional_arg_group.add_argument('--min-len','-l', action = 'store',
+        default = 300, metavar = '[bp]', type = int,
+        help = ' Minimum ORF size (bp) to consider (default = 300)\n\n')
+
+    optional_arg_group.add_argument('--threads','-p', action = 'store',
+        default = 4, metavar = '[Threads]', type = int,
+        help = ' Number of threads (default = 4)\n')
+
+    optional_arg_group.add_argument('--rfc','-r', action = 'store',
+        metavar = '[Trained-RFC]', type = str, default = None,
+        help = ' Previous TIdeS trained RFC model.\n')
+
+    # optional_arg_group.add_argument('--train-rfc','-train-rfc', action = 'store_true',
+    #     help = ' Only runs the RFC training.\n\n')
+
+    optional_arg_group.add_argument('--gzip','-gz', action = 'store_true',
+        help = ' Compress output folder and data.\n\n')
+
+
+    # Ensures that just script description provided if no arguments provided
+    if len(sys.argv[1:]) == 0:
+        print (parser.description+'\n')
+        sys.exit()
+
+    args = parser.parse_args()
+    # print(args)
+    # sys.exit()
+    args.taxon_name = '_'.join(args.taxon_name)
+
+    return args
 
 
 
@@ -185,11 +268,19 @@ if __name__ == '__main__':
     """
     Notes to self...
 
-    Definitely "require" a genetic code even for contamination!!! This may help
-    infer target vs non-self in weird taxa (e.g. ciliates)...
+    FASTA file of all predictions (ORF-calling) should be viewed as intermediate
+    files. -- FLAG this
 
-    Pickle some supporting files as well? Maybe make a log with parameters to
-    improve repeatability? e.g. what translation table did we use last week
+    Add 'single-best' option for ORFs to break ties when ORF calls have identical
+    proba values (i.e. return longest when prob for pORF1 == pORF2)... All preds is intermed file.
+
+    Add stranded-seq option. Need to find dataset for this to be certain...
+
+    Add argparse related stuff...
+
+    Also put save-preds functionality into eval_contam pipeline.
+
+    Reset threads to 1 or 2 as defaults...
     """
 
 
@@ -197,24 +288,28 @@ if __name__ == '__main__':
     # print('Under Construction!')
     # sys.exit()
 
-    if 1 < len(sys.argv[1:]) < 5:
-        fasta_file = sys.argv[1]
-        taxon_code = sys.argv[2]
-        try:
-            gcode = sys.argv[3]
-            dmnd_db = sys.argv[4]
-        except:
-            gcode = '1'
-            dmnd_db = 'Prot_DB/tides_db.dmnd'
+    args = collect_args()
 
-    else:
-        print("\nTemporary Usage:\n    python3 tides.py [TRANSCRIPTOME] [TAXON-NAME] [TRANSLATION-TABLE]\n")
-        sys.exit()
+    # if 1 < len(sys.argv[1:]) < 5:
+    #     fasta_file = sys.argv[1]
+    #     taxon_code = sys.argv[2]
+    #     try:
+    #         gcode = sys.argv[3]
+    #         dmnd_db = sys.argv[4]
+    #     except:
+    #         gcode = '1'
+    #         dmnd_db = 'tides_aa_db.dmnd'
+    #
+    # else:
+    #     print("\nTemporary Usage:\n    python3 tides.py [TRANSCRIPTOME] [TAXON-NAME] [TRANSLATION-TABLE]\n")
+    #     sys.exit()
+
+    contam = False
 
     if not oc.eval_gcode_ttable(gcode):
         sys.exit(1)
 
-
-    predict_orfs(fasta_file, taxon_code, dmnd_db)
-    #
-    # eval_contam(fasta_file, taxon_code, sister_summary)
+    if not contam:
+        predict_orfs(fasta_file, taxon_code, dmnd_db)
+    else:
+        eval_contam(fasta_file, taxon_code, sister_summary)
