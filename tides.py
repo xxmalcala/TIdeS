@@ -13,22 +13,17 @@ from bin import save_preds as sp
 
 def collect_args():
 
-    parser = argparse.ArgumentParser(description = f'{ascii_msg()}\n     TIdeS '
-            'leverages supervised machine-learning to hunt\n     '
-            'and select "optimal" putative ORFs (pORFs) from a given\n     '
-            'transcriptome and can infer ORFs from a target taxon\n     '
-            'from "noisy" (e.g. scRNA-seq) datasets.\n\nUsage:\n  tides.py '
-            '[options] --in [FASTA file] --taxon [taxon name]',
+    parser = argparse.ArgumentParser(description = f'{ascii_logo_vsn()}\n{usage_msg()}',
             usage=argparse.SUPPRESS, add_help = False,
             formatter_class=argparse.RawDescriptionHelpFormatter)
 
     g = parser.add_argument_group('General Options', description = (
-    '''--fin (-f)             input file in FASTA format\n'''
+    '''--fin (-f)            input file in FASTA format\n'''
     '''--taxon (-n)          taxon-name or PhyloToL taxon-code\n'''
     '''--threads (-p)        number of CPU threads (default = 1)\n'''
     '''--model (-m)          previously trained TIdeS model (".pkl" file)\n'''
     '''--quiet (-q)          no console output\n'''
-    '''--gzip (-gz)          gzip TIdeS output\n'''
+    '''--gzip (-gz)          tar and gzip TIdeS output\n'''
     '''--help (-h)           show this help message and exit'''))
 
     g.add_argument('--help', '-h', action="help", help=argparse.SUPPRESS)
@@ -61,7 +56,7 @@ def collect_args():
     '''--min-orf (-l)        minimum ORF length (bp) to evaluate (default = 300)\n'''
     '''--evalue (-e)         maximum e-value to infer reference ORFs (default = 1e-30)\n'''
     '''--gencode (-gc)       genetic code to use to translate ORFs\n'''
-    '''--strand              query strands to call ORFs (both/minus/plus, default = both)'''))
+    '''--strand (-s)         query strands to call ORFs (both/minus/plus, default = both)'''))
 
     porf.add_argument('--db','-d', action = 'store',
         metavar = '[Protein Database]', type = str,
@@ -83,24 +78,26 @@ def collect_args():
         default = '1', metavar = '[Genetic-Code]', type = str,
         help = argparse.SUPPRESS)
 
-    porf.add_argument('--strand', choices = ['both', 'plus', 'minus'], action = 'store',
+    porf.add_argument('--strand', '-s', choices = ['both', 'plus', 'minus'], action = 'store',
         default = 'both', type = str, help = argparse.SUPPRESS)
 
     cntm = parser.add_argument_group('Contamination-Calling Options', description = (
     '''--contam (-c)         evalute ORFs for contamination (may be discontinued)\n'''
-    '''--sister-table (-s)   table of sequence annotated as target or contamination\n\n'''))
+    '''--sister-table        table of sequences annotated as target or contamination\n\n'''))
 
     cntm.add_argument('--contam','-c', action = 'store_true',
         help = argparse.SUPPRESS)
 
-    cntm.add_argument('--sister-table','-s', action = 'store',
+    cntm.add_argument('--sister-table', action = 'store',
         metavar = '[Sister-Relationship Table]', type = str,
         help = argparse.SUPPRESS)
 
 
     # Ensures that just script description provided if no arguments provided
     if len(sys.argv[1:]) == 0:
-        print (parser.description+'\n')
+        print(ascii_logo_vsn())
+        print(detail_msg())
+        print(f'{usage_msg()}\n')
         sys.exit()
 
     args = parser.parse_args()
@@ -110,189 +107,174 @@ def collect_args():
     return args
 
 
-def ascii_msg():
-    msg = """      _____ ___    _     ___
+def ascii_logo_vsn():
+    alv_msg = """      _____ ___    _     ___
      |_   _|_ _|__| |___/ __|
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
      Version 1.2.0
     """
-    return msg
+    return alv_msg
 
 
-def predict_orfs(fasta_file: str,
+def detail_msg():
+    dtl_msg = """     TIdeS leverages supervised machine-learning to hunt
+     and select "optimal" putative ORFs (pORFs) from a
+     transcriptome and can infer ORFs from a target taxon
+     from "noisy" (e.g. scRNA-seq) datasets.\n"""
+    return dtl_msg
+
+
+def usage_msg():
+    return """Usage:\n    tides.py [options] --fin [FASTA file] --taxon [taxon name]"""
+
+
+def predict_orfs(
+                fasta_file: str,
                 taxon_code:str,
                 dmnd_db: str,
                 gcode: str = '1',
                 pretrained = None,
                 min_len:int = 300,
                 pid: float = 0.97,
-                threads: int = 24,
-                intermed: bool = True,
+                evalue: float = 1e-30,
+                threads: int = 1,
+                strand:str = 'both',
                 verb: bool = True) -> None:
 
     sttime = time.time()
-
-    if verb:
-        print(ascii_msg())
 
     if verb:
         print('#------ Preparing Transcriptome Data -------#')
 
-    filt_fas = ft.filter_transcripts(fasta_file,
-                                        taxon_code,
-                                        sttime,
-                                        min_len,
-                                        threads,
-                                        pid,
-                                        verb)
+    filt_fas = ft.filter_transcripts(
+                                    fasta_file,
+                                    taxon_code,
+                                    sttime,
+                                    min_len,
+                                    threads,
+                                    pid,
+                                    verb)
 
     if verb:
-        print('\n#------- Calling Training and pORFs --------#')
+        if not pretrained:
+            print('\n#------- Calling Training and pORFs --------#')
+        else:
+            print('\n#------------- Calling pORFs ---------------#')
 
-    query_orfs, rnd_orfs = oc.generate_orf_calls(filt_fas,
-                                                    taxon_code,
-                                                    sttime,
-                                                    dmnd_db,
-                                                    gcode,
-                                                    min_len,
-                                                    threads,
-                                                    intermed,
-                                                    3,
-                                                    verb)
+    query_orfs, rnd_orfs, comp_orf_fas = oc.generate_orf_calls(
+                                                            filt_fas,
+                                                            taxon_code,
+                                                            sttime,
+                                                            dmnd_db,
+                                                            gcode,
+                                                            pretrained,
+                                                            min_len,
+                                                            evalue,
+                                                            threads,
+                                                            strand,
+                                                            3,
+                                                            verb)
 
     if verb:
         print('\n#----------- ORF Classification ------------#')
 
-    pos_tides_preds, final_preds = cl.classify_orfs(taxon_code,
-                                                    rnd_orfs,
-                                                    query_orfs,
-                                                    sttime,
-                                                    pretrained,
-                                                    threads,
-                                                    verb,
-                                                    False)
+    pos_tides_preds, final_preds = cl.classify_orfs(
+                                                taxon_code,
+                                                rnd_orfs,
+                                                query_orfs,
+                                                sttime,
+                                                pretrained,
+                                                threads,
+                                                verb,
+                                                False)
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
 
-    comp_orf_fas = f'{taxon_code}_TIdeS/ORF_Calling/{taxon_code}.{min_len}bp.CompORFs.fas'
+    sp.finalize_outputs(
+                    taxon_code,
+                    comp_orf_fas,
+                    final_preds,
+                    pos_tides_preds,
+                    gcode,
+                    min_len)
+
+    return sttime
 
 
-    sp.finalize_outputs(taxon_code,
-                        comp_orf_fas,
-                        final_preds,
-                        pos_tides_preds,
-                        gcode,
-                        min_len)
-
-    if verb:
-        print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Finished running TIdeS')
-        print('\n#--------- Thanks for using TIdeS! ---------#\n')
-
-
-
-def eval_contam(fasta_file: str,
-                taxon_code: str,
-                sister_summary: str,
-                pretrained: str = None,
-                threads: int = 24,
-                intermed: bool = True,
-                verb: bool = True) -> None:
-
-    sttime = time.time()
-
-    if verb:
-        print(ascii_msg())
+def eval_contam(
+            fasta_file: str,
+            taxon_code: str,
+            sister_summary: str,
+            gcode: str = '1',
+            pretrained: str = None,
+            min_len: int = 300,
+            threads: int = 1,
+            verb: bool = True) -> None:
 
     sttime = time.time()
 
     if verb:
         print('#---- Preparing User-Assessed ORF Data -----#')
 
-    tg_seqs, ntg_seqs = ft.prep_contam(fasta_file,
+    tg_seqs, ntg_seqs = ft.prep_contam(
+                                fasta_file,
                                 taxon_code,
                                 sister_summary,
+                                pretrained,
                                 sttime,
                                 verb)
 
-    query_orfs, ref_orfs = oc.generate_contam_calls(tg_seqs,
-                                                    ntg_seqs,
-                                                    fasta_file,
-                                                    taxon_code,
-                                                    sttime,
-                                                    gcode,
-                                                    3,
-                                                    verb)
+    query_orfs, ref_orfs = oc.generate_contam_calls(
+                                                tg_seqs,
+                                                ntg_seqs,
+                                                fasta_file,
+                                                taxon_code,
+                                                pretrained,
+                                                sttime,
+                                                gcode,
+                                                3,
+                                                verb)
 
     if verb:
         print('\n#----------- ORF Classification ------------#')
 
-    tg_preds, ntg_preds = cl.classify_orfs(taxon_code,
-                                    ref_orfs,
-                                    query_orfs,
-                                    sttime,
-                                    pretrained,
-                                    threads,
-                                    verb,
-                                    True)
+    tg_preds, ntg_preds = cl.classify_orfs(
+                                        taxon_code,
+                                        ref_orfs,
+                                        query_orfs,
+                                        sttime,
+                                        pretrained,
+                                        threads,
+                                        verb,
+                                        True)
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
 
-    tds_tg_pf = f'{taxon_code}_TIdeS/{taxon_code}.TIdeS.fas'
-    tds_ntg_pf = f'{taxon_code}_TIdeS/{taxon_code}.NonTarget.TIdeS.fas'
-    tds_tg_ps, tds_ntg_ps = {}, {}
 
-    with open(tds_tg_pf, 'w+') as w:
-        for i in SeqIO.parse(fasta_file,'fasta'):
-            if i.id in tg_preds:
-                w.write(f'>{i.description}\n{i.seq}\n')
-                tds_tg_ps[i.description] = f'{i.seq}'
+    sp.finalize_outputs(
+                    taxon_code,
+                    fasta_file,
+                    ntg_preds,
+                    tg_preds,
+                    gcode,
+                    min_len,
+                    True)
 
-    with open(tds_ntg_pf, 'w+') as w:
-        for i in SeqIO.parse(fasta_file,'fasta'):
-            if i.id in ntg_preds:
-                w.write(f'>{i.description}\n{i.seq}\n')
-                tds_ntg_ps[i.description] = f'{i.seq}'
-
-    with open(tds_tg_pf.replace("fas","AA.fas"), 'w+') as w:
-        tds_psa = oc.translate_seqs(tds_tg_ps, gcode)
-        for k, v in tds_psa.items():
-                w.write(f'{k}\n{v}\n')
-
-    with open(tds_ntg_pf.replace("fas","AA.fas"), 'w+') as w:
-        tds_psa = oc.translate_seqs(tds_ntg_ps, gcode)
-        for k, v in tds_psa.items():
-                w.write(f'{k}\n{v}\n')
-
-    for fas in glob.glob(f'{taxon_code}_TIdeS/{taxon_code}.*fas'):
-        shutil.copy2(fas, f'{taxon_code}_TIdeS/Classified/')
-
-    if verb:
-        print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Finished running TIdeS')
-        print('\n#--------- Thanks for using TIdeS! ---------#\n')
+    return sttime
 
 
 if __name__ == '__main__':
 
-    """
-    Notes to self...
+    """Note to self:
+    Add method to check the sister-summary table format...
 
-    FASTA file of all predictions (ORF-calling) should be viewed as intermediate
-    files. -- FLAG this
-
-    Add 'single-best' option for ORFs to break ties when ORF calls have identical
-    proba values (i.e. return longest when prob for pORF1 == pORF2)... All preds is intermed file.
-
-    Add stranded-seq option. Need to find dataset for this to be certain...
-
-    Add argparse related stuff...
-
-    Also put save-preds functionality into eval_contam pipeline.
-
-    Reset threads to 1 or 2 as defaults...
+    Requirements:
+    -- Tab-delimited
+    -- Target/Non-Target OR 1/0
     """
 
     args = collect_args()
@@ -303,26 +285,45 @@ if __name__ == '__main__':
     args.pid = args.pid / 100
 
     if not args.contam:
-        if not args.db:
-            print('Missing diamond "blast" database -- use the prep_tides_db.sh '
-                    'script in the Tides/util/ directory.')
+        if not args.db and not args.model:
+            print('\nERROR: Missing diamond "blast" database -- use the "prep_tides_db.sh" '
+                    'script in the Tides/util/ directory.\n')
             sys.exit(1)
 
-        predict_orfs(args.fin,
-                    args.taxon,
-                    args.db,
-                    args.gencode,
-                    args.model,
-                    args.min_orf,
-                    args.pid,
-                    args.threads,
-                    True,
-                    not args.quiet)
+        if not args.quiet:
+            print(ascii_logo_vsn())
+
+        sttime = predict_orfs(args.fin,
+                                args.taxon,
+                                args.db,
+                                args.gencode,
+                                args.model,
+                                args.min_orf,
+                                args.pid,
+                                args.evalue,
+                                args.threads,
+                                args.strand,
+                                not args.quiet)
     else:
-        eval_contam(args.fin,
-                    args.taxon,
-                    args.sister_table,
-                    args.model,
-                    args.threads,
-                    True,
-                    not args.quiet)
+        if not args.quiet:
+            print(ascii_logo_vsn())
+
+        sttime = eval_contam(args.fin,
+                            args.taxon,
+                            args.sister_table,
+                            args.gencode,
+                            args.model,
+                            args.min_orf,
+                            args.threads,
+                            not args.quiet)
+
+
+    if args.gzip:
+        if not args.quiet:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Compressing TIdeS Outputs')
+
+        os.system(f'tar -zcf {args.taxon}_TIdeS.tar.gz {args.taxon}_TIdeS/')
+
+    if not args.quiet:
+        print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Finished running TIdeS')
+        print('\n#--------- Thanks for using TIdeS! ---------#\n')
