@@ -96,7 +96,14 @@ def remove_rRNA(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, th
     return rRNA_clean_fas
 
 
-def prep_contam(txm_fas: str, txn_code: str, sis_smry: str, start_time, verb: bool = True) -> dict:
+def prep_contam(
+            txm_fas: str,
+            txn_code: str,
+            sis_smry: str,
+            pretrained: str,
+            start_time,
+            verb: bool = True) -> dict:
+
     backup_dir = f'{txn_code}_TIdeS/Original/'
     eval_seq_fas = f'{backup_dir}{txn_code}.EvalSeqs.fas'
 
@@ -104,7 +111,12 @@ def prep_contam(txm_fas: str, txn_code: str, sis_smry: str, start_time, verb: bo
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Backing up data for {txn_code}')
 
     prep_dir(backup_dir)
+
     shutil.copy2(txm_fas, backup_dir)
+
+    if pretrained:
+        return None, None
+
     shutil.copy2(sis_smry, backup_dir)
 
     if verb:
@@ -138,7 +150,15 @@ def prep_contam(txm_fas: str, txn_code: str, sis_smry: str, start_time, verb: bo
     return targ_seqs, non_targ_seqs
 
 
-def filter_transcripts(txm_fas: str, txn_code: str, start_time, min_len: int = 300, threads: int = 4, pid: float = 0.97, verb: bool = True) -> str:
+def filter_transcripts(
+                    txm_fas: str,
+                    txn_code: str,
+                    start_time,
+                    min_len: int = 300,
+                    threads: int = 4,
+                    pid: float = 0.97,
+                    verb: bool = True) -> str:
+
     backup_dir = f'{txn_code}_TIdeS/Original/'
     filt_len_dir = f'{txn_code}_TIdeS/Filter_Steps/Length_Filter/'
     clust_dir = f'{txn_code}_TIdeS/Filter_Steps/Clustering/'
