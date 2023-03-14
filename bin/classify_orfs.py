@@ -59,7 +59,11 @@ def save_rfc(rfc_model, txn_code):
     pickle.dump(rfc_model, open(rfc_pkl, 'wb+'))
 
 
-def process_predictions(txn_code: str, query_preds, query_df: pd.core.frame.DataFrame, contam: bool = False) -> dict:
+def process_predictions(
+                    txn_code: str,
+                    query_preds,
+                    query_df: pd.core.frame.DataFrame,
+                    contam: bool = False) -> dict:
 
     tds_dir = f'{txn_code}_TIdeS/Classified/'
     Path(tds_dir).mkdir(parents = True, exist_ok = True)
@@ -114,17 +118,18 @@ def best_porf(pos_pred_seqs, tds_tsv):
 
 
 
-def classify_orfs(txn_code: str,
-                    train_orfs: dict,
-                    query_orfs: dict,
-                    start_time,
-                    pretrained: str = None,
-                    threads: int = 4,
-                    verb: bool = True,
-                    contam: bool = False) -> dict:
+def classify_orfs(
+                txn_code: str,
+                train_orfs: dict,
+                query_orfs: dict,
+                start_time,
+                pretrained: str = None,
+                threads: int = 4,
+                verb: bool = True,
+                contam: bool = False) -> dict:
 
     if verb:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Extracting training features')
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Extracting sequence features')
 
     query_df = extract_features(query_orfs, contam, False)
 
@@ -153,26 +158,3 @@ def classify_orfs(txn_code: str,
 
     else:
         return process_predictions(txn_code, query_preds, query_df)
-
-    # return process_predictions(txn_code, query_preds, query_df, contam)
-
-#
-# def score_hits(query_preds, query_df):
-#     comp_hits = {i.split('\t')[0]:int(i.split('\t')[-1]) for i in open('/home/dr_x/Desktop/New_TIdeS/Am_my_Ddis.300bp.CompORFs.RefGenome.tsv').readlines()}
-#     potential_crf = len([k for k, v in comp_hits.items() if v == 1])
-#     qpn = {}
-#     for n in range(len(query_preds)):
-#         qpn[query_df["Seq_Name"][n]] = argmax(query_preds[n])
-#     tds_pred = len([k for k, v in qpn.items() if v == 1])
-#     n_with_hit = len([k for k, v in qpn.items() if k in comp_hits.keys() and v == 1])
-#     crf_with_hit = len([k for k, v in qpn.items() if k in comp_hits.keys() and v == 1 and comp_hits[k] == 1])
-#     print(f'Potential-CRF-Hits: {potential_crf}')
-#     print(f'Total-TIdeS-pORF-Preds: {tds_pred}')
-#     print(f'Total-TIdeS-pORF-Hits: {n_with_hit}')
-#     print(f'Total-TIdeS-pORF-CRF: {crf_with_hit}')
-#
-# def plot_roc():
-#     import matplotlib.pyplot as plt
-#     from sklearn.metrics import RocCurveDisplay
-#     rfc_roc = RocCurveDisplay.from_estimator(rfc, X_test, y_test)
-#     plt.show()
