@@ -36,13 +36,12 @@ To see all options:
     
     python3 tides.py --help
 
-### Planned Updates - 10-2022
+### Planned Updates - 03-2023
 - [x] Auto-optimize Random Forests (GridSearchCV)
 - [x] Determine most useful set of composition criteria on broad phylogenomic scale (euks for now)
 - [X] Automate TIdeS pipeline
-- [ ] Support "partial" ORFs
-- [ ] tarball packaging
-- [ ] Rethinking folder(s) structure and outputs...
-- [ ] Support translation tables by NAME too, not just number (e.g. "Universal", "Ciliate", etc)
+- [X] tarball packaging
+- [X] Rethinking folder(s) structure and outputs...
+- [X] Support translation tables by NAME too, not just number (e.g. "Universal", "Ciliate", etc)
 - [ ] Conda and PyPi packaging
-- [ ] Prepare exemplar issues as examples (Orientation for now...)
+- [ ] Prepare basic examples (orientation/contamination)
