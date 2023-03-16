@@ -45,3 +45,4 @@ To see all options:
 - [X] Support translation tables by NAME too, not just number (e.g. "Universal", "Ciliate", etc)
 - [ ] Conda and PyPi packaging
 - [ ] Prepare basic examples (orientation/contamination)
+- [ ] Add method to eval pre-called ORFs with/without pre-trained model
