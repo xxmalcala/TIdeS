@@ -2,7 +2,7 @@
 
 mkdir 'TIdeS_Prot_DB'
 
-curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/150/955/GCF_000150955.2_ASM15095v2/GCF_000150955.2_ASM15095v2_protein.faa.gz --output TIdeS_Prot_DB/phaeodactylum.aa.fas.gz
+curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/149/405/GCF_000149405.2_ASM14940v2/GCF_000149405.2_ASM14940v2_protein.faa.gz --output TIdeS_Prot_DB/thalassiosira.aa.fas.gz
 
 curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/735/GCF_000001735.4_TAIR10.1/GCF_000001735.4_TAIR10.1_protein.faa.gz  --output TIdeS_Prot_DB/arabidopsis.aa.fas.gz
 
