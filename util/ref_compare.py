@@ -6,7 +6,7 @@ import os, sys
 def diamond_blast(query_fas, ref_fas, outname) -> str:
     out_tsv = f'{outname}.BLASTX_RefDB.tsv'
     dmnd_cmd = f'diamond blastx -q {query_fas} -d {ref_fas} -k 1 -o {out_tsv} ' \
-                '-f 6 qseqid sseqid qlen slen length pident qframe --quiet'
+                '--ultra-sensitive -f 6 qseqid sseqid qlen slen length pident qframe --quiet'
     os.system(dmnd_cmd)
     return out_tsv
 
