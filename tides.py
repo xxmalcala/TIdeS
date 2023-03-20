@@ -192,6 +192,8 @@ def predict_orfs(
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
+        print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
+                ' Making FASTA files and storing TIdeS model')
 
     sp.finalize_outputs(
                     taxon_code,
@@ -253,7 +255,8 @@ def eval_contam(
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
-
+        print(f'[{timedelta(seconds=round(time.time()-sttime))}]  '
+                ' Making FASTA files and storing TIdeS model')
 
     sp.finalize_outputs(
                     taxon_code,
