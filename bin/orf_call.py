@@ -65,14 +65,14 @@ def bin_pos(cdn_pos: list, rf: dict, std: str) -> dict:
 def eval_coords(strt_coords: np.ndarray, stp_coords:  np.ndarray, rframe: int, min_len: int) -> list:
     porf_coords = []
 
-    if len(stp_coords) == 1:
+    if len(stp_coords) == 2:
         try:
             if rframe > 3:
-                new_start = strt_coords[strt_coords > stp_coords[0]].max()
+                new_start = strt_coords[strt_coords > stp_coords[1]].max()
             else:
-                new_start = strt_coords[strt_coords < stp_coords[0]].min()
-            if abs(new_start - stp_coords[0]) >= min_len:
-                porf_coords.append((new_start, stp_coords[0]))
+                new_start = strt_coords[strt_coords < stp_coords[1]].min()
+            if abs(new_start - stp_coords[1]) >= min_len:
+                porf_coords.append((new_start, stp_coords[1]))
 
         except ValueError:
             pass
@@ -87,14 +87,14 @@ def eval_coords(strt_coords: np.ndarray, stp_coords:  np.ndarray, rframe: int, m
                     tmp_start = [i for i in strt_coords[strt_coords <= pos[1]] if (i - pos[0]) >= min_len]
                     porf_coords.append((max(tmp_start), pos[0]))
                     porf_coords += [(tmp_start[n+1], pos[0]) for n in range(len(tmp_start)-1)
-                                    if (tmp_start[n+1] - tmp_start[n]) > 44
+                                    if (tmp_start[n+1] - tmp_start[n]) > 14
                                     and (pos[1] - tmp_start[n+1]) >= min_len]
 
                 else:
                     tmp_start = [i for i in strt_coords[strt_coords >= pos[0]] if (pos[1] - i) >= min_len]
                     porf_coords.append((min(tmp_start), pos[1]))
                     porf_coords += [(tmp_start[n+1], pos[1]) for n in range(len(tmp_start)-1)
-                                    if (tmp_start[n+1] - tmp_start[n]) > 44
+                                    if (tmp_start[n+1] - tmp_start[n]) > 14
                                     and (pos[1] - tmp_start[n+1]) >= min_len]
 
             except ValueError:
@@ -105,7 +105,7 @@ def eval_coords(strt_coords: np.ndarray, stp_coords:  np.ndarray, rframe: int, m
 
 def get_start_stop_codons(seq: str, stp_cdns: list, min_len: int) -> dict:
     strt_rf = {1:[], 2:[], 3:[], 4:[], 5:[], 6:[]}
-    stp_rf = {1:[], 2:[], 3:[], 4:[], 5:[], 6:[]}
+    stp_rf = {1:[0], 2:[0], 3:[0], 4:[len(seq)], 5:[len(seq)], 6:[len(seq)]}
 
     stp_cdns_p = []
     stp_cdns_n = []
@@ -161,7 +161,7 @@ def extract_orfs(seq: str, stp_cdns: list, min_len: int, strand: str) -> list:
         pass
 
     for k in stp_rf.keys():
-        stp_coords = stp_rf[k]
+        stp_coords = list(set(stp_rf[k]))
         strt_coords = strt_rf[k]
 
         if stp_coords and strt_coords:
@@ -229,8 +229,6 @@ def ref_orf_dmnd(
                 f'-q {query} ' \
                 f'-d {dmnd_db} ' \
                 f'-k 1 ' \
-                f'--query-cover 0.60 ' \
-                f'--subject-cover .60 ' \
                 f'-f {outfmt}'
 
     dmnd_rslt = subprocess.run(dmnd_cmd.split(),
