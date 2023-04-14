@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Script prepares folder(s) and filters the transcriptome by length and putative
+"""Prepares folder(s) and filters the transcriptome by length and putative
 rRNA sequences.
 
 Note that rRNA filtering is performed by Barrnap. Taxa with unusual rRNAs, such
@@ -9,20 +9,35 @@ as Foraminifera, will need to have their rRNAs removed independently.
 Dependencies include: Barrnap, CD-HIT."""
 
 
-import shutil, subprocess, time
+import shutil, subprocess, sys, time
 from datetime import timedelta
 from pathlib import Path
 
 from Bio import SeqIO
 
 
-
-
 def prep_dir(new_dir: str) -> None:
     Path(new_dir).mkdir(parents = True, exist_ok = True)
 
 
-def filt_len(fasta_file: str, taxon_code: str, out_dir: str, min_len: int) -> str:
+def filt_len(
+            fasta_file: str,
+            taxon_code: str,
+            out_dir: str,
+            min_len: int) -> str:
+    """
+    Remove sequences shorter than a minimum length
+
+    Parameters
+    ----------
+    fasta_file: FASTA formatted file
+    taxon_code: species/taxon name or abbreviated code
+    out_dir: output directory to store filtered data
+    min_len: minimum ORF/transcript length to consider
+
+    Returns length-filtered FASTA formatted file
+    """
+
     len_filt_fasta = f'{out_dir}/{taxon_code}.{min_len}bp.fas'
 
     with open(len_filt_fasta, 'w+') as w:
@@ -41,7 +56,26 @@ def filt_len(fasta_file: str, taxon_code: str, out_dir: str, min_len: int) -> st
     return len_filt_fasta
 
 
-def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threads: int) -> str:
+def clust_txps(
+                fasta_file: str,
+                taxon_code: str,
+                out_dir: str,
+                pid: float,
+                threads: int) -> str:
+    """
+    Remove redundant sequences using a given minium percent identity
+
+    Parameters
+    ----------
+    fasta_file: FASTA formatted file
+    taxon_code: species/taxon name or abbreviated code
+    out_dir: output directory to store filtered data
+    pid: minimum percent identity to cluster redundat sequences
+    threads: number of cpu threads to use
+
+    Returns a redundant sequence filtered FASTA formatted file
+    """
+
     clust_fas = f'{out_dir}{fasta_file.split("/")[-1].split("Filt")[0]}{int(pid*100)}pid.Cluster.fas'
 
     cd_hit_cmd = f'cd-hit-est -T {threads} '\
@@ -60,7 +94,20 @@ def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threa
     return clust_fas
 
 
-def run_barrnap(fasta_file: str, threads: int) -> list:
+def run_barrnap(
+                fasta_file: str,
+                threads: int) -> list:
+    """
+    Run Barrnap to remove easily identifiable rRNAs
+
+    Parameters
+    ----------
+    fasta_file: FASTA formatted file
+    threads: number of cpu threads to use
+
+    Returns a list of putative rRNA sequences
+    """
+
     rRNA_seqs = []
     kdm = ['bac','arc','mito','euk']
 
@@ -77,7 +124,26 @@ def run_barrnap(fasta_file: str, threads: int) -> list:
     return rRNA_seqs
 
 
-def remove_rRNA(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, threads: int) -> str:
+def remove_rRNA(
+                fasta_file: str,
+                taxon_code: str,
+                out_dir: str,
+                min_len: int,
+                threads: int) -> str:
+    """
+    Remove putative rRNA sequences from FASTA file
+
+    Parameters
+    ----------
+    fasta_file: FASTA formatted file
+    taxon_code: species/taxon name or abbreviated code
+    out_dir: output directory to store filtered data
+    min_len: minimum ORF/transcript length to consider
+    threads: number of cpu threads to use
+
+    Returns an rRNA-free FASTA formatted file
+    """
+
     rRNA_seqs = run_barrnap(fasta_file, threads)
 
     rRNA_clean_fas = f'{out_dir}{taxon_code}.{min_len}bp.Filt_rRNA.fas'
@@ -85,6 +151,7 @@ def remove_rRNA(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, th
 
     rRNA_contam, clean_seqs = [],[]
 
+    # bin sequences as either putative rRNAs or "clean"
     for i in SeqIO.parse(fasta_file, 'fasta'):
         if i.id in rRNA_seqs:
             rRNA_contam.append(f'>{i.id}\n{i.seq}')
@@ -101,22 +168,38 @@ def remove_rRNA(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, th
 
 
 def prep_contam(
-            txm_fas: str,
-            txn_code: str,
+            fasta_file: str,
+            taxon_code: str,
             sis_smry: str,
             pretrained: str,
             start_time,
             verb: bool = True) -> dict:
 
-    backup_dir = f'{txn_code}_TIdeS/Original/'
-    eval_seq_fas = f'{backup_dir}{txn_code}.EvalSeqs.fas'
+    """
+    Prepares target/non-target sequences from a FASTA formatted file using a user
+    provided summary table.
+
+    Parameters
+    ----------
+    fasta_file: FASTA formatted file
+    taxon_code: species/taxon name or abbreviated code
+    sis_smry: tab-delimited file with user-defined "target" and "non-target" sequences
+    pretrained: random forest model from previous TIdeS run
+    start_time: initial timestamp to track runtime
+    verb: verbose print statements
+
+    Returns two lists based on the 'sis_smry' text file: "target" sequences and "non-target" sequences
+    """
+
+    backup_dir = f'{taxon_code}_TIdeS/Original/'
+    eval_seq_fas = f'{backup_dir}{taxon_code}.EvalSeqs.fas'
 
     if verb:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Backing up data for {txn_code}')
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Backing up data for {taxon_code}')
 
     prep_dir(backup_dir)
 
-    shutil.copy2(txm_fas, backup_dir)
+    shutil.copy2(fasta_file, backup_dir)
 
     if pretrained:
         return None, None
@@ -133,10 +216,11 @@ def prep_contam(
 
     targ_seqs, non_targ_seqs = {}, {}
 
+    # Create FASTA files for annotated 'target' and 'non-target' sequences for training
     with open(eval_seq_fas, 'w+') as w:
-        for i in SeqIO.parse(txm_fas, 'fasta'):
+        for i in SeqIO.parse(fasta_file, 'fasta'):
             try:
-                if seq_summary[i.id] == 'target':
+                if seq_summary[i.id] in ['target', 'host', 'positive', '1']:
                     w.write(f'>{i.id}_Target\n{i.seq.upper()}\n')
                     targ_seqs[f'{i.id}_Target'] = f'{i.seq.upper()}'
 
@@ -147,50 +231,76 @@ def prep_contam(
             except KeyError:
                 continue
 
-    if min([len(targ_seqs), len(non_targ_seqs)]) < 100:
+    if 50 < min([len(targ_seqs), len(non_targ_seqs)]) < 100:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
-            'Fewer than 100 examples of target and non-target sequences were assigned.')
+            'Fewer than 100 examples each of target and non-target sequences were assigned.')
+
+    elif min([len(targ_seqs), len(non_targ_seqs)]) < 50:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Error: ' \
+            'Fewer than 50 examples each of target and non-target sequences were assigned.')
+
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Exiting TIdeS: Too Few Training Seqs.\n')
+        sys.exit()
+
+    else:
+        pass
 
     return targ_seqs, non_targ_seqs
 
 
 def filter_transcripts(
-                    txm_fas: str,
-                    txn_code: str,
+                    fasta_file: str,
+                    taxon_code: str,
                     start_time,
                     min_len: int = 300,
                     threads: int = 4,
                     pid: float = 0.97,
                     verb: bool = True) -> str:
+    """
+    Performs all the initial filtering steps to ease classification
 
-    backup_dir = f'{txn_code}_TIdeS/Original/'
-    filt_len_dir = f'{txn_code}_TIdeS/Filter_Steps/Length_Filter/'
-    clust_dir = f'{txn_code}_TIdeS/Filter_Steps/Clustering/'
-    filt_rRNA_dir = f'{txn_code}_TIdeS/Filter_Steps/rRNA_Filter/'
+    Parameters
+    ----------
+    fasta_file: FASTA formatted file
+    txn_code: species/taxon name or abbreviated code
+    start_time: initial timestamp to track runtime
+    min_len: minimum ORF/transcript length to consider
+    threads: number of cpu threads to use
+    pid: minimum percent identity to cluster redundat sequences
+    verb: verbose print statements
+
+    Returns the 'final' filtered FASTA formatted file
+    """
+
+
+    backup_dir = f'{taxon_code}_TIdeS/Original/'
+    filt_len_dir = f'{taxon_code}_TIdeS/Filter_Steps/Length_Filter/'
+    clust_dir = f'{taxon_code}_TIdeS/Filter_Steps/Clustering/'
+    filt_rRNA_dir = f'{taxon_code}_TIdeS/Filter_Steps/rRNA_Filter/'
 
     if verb:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Backing up data for {txn_code}')
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Backing up data for {taxon_code}')
 
     prep_dir(backup_dir)
-    shutil.copy2(txm_fas, backup_dir)
+    shutil.copy2(fasta_file, backup_dir)
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing short transcripts')
 
     prep_dir(filt_len_dir)
-    mlen_fas = filt_len(txm_fas, txn_code, filt_len_dir, min_len)
+    mlen_fas = filt_len(fasta_file, taxon_code, filt_len_dir, min_len)
 
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing rRNA contamination')
 
     prep_dir(filt_rRNA_dir)
-    rRNA_free = remove_rRNA(mlen_fas, txn_code, filt_rRNA_dir, min_len, threads)
+    rRNA_free = remove_rRNA(mlen_fas, taxon_code, filt_rRNA_dir, min_len, threads)
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Filtering redundant transcripts')
 
     prep_dir(clust_dir)
-    post_clst_fas = clust_txps(rRNA_free, txn_code, clust_dir, pid, threads)
+    post_clst_fas = clust_txps(rRNA_free, taxon_code, clust_dir, pid, threads)
 
     return post_clst_fas
