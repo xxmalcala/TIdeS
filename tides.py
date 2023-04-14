@@ -27,6 +27,8 @@ def collect_args():
     '''--taxon (-n)          taxon-name or PhyloToL taxon-code\n'''
     '''--threads (-p)        number of CPU threads (default = 1)\n'''
     '''--model (-m)          previously trained TIdeS model (".pkl" file)\n'''
+    '''--kmer (-k)           kmer size for generating sequence features (default = 3)\n'''
+    '''--overlap (-ov)       permit overlapping kmers (see --kmer)\n'''
     '''--quiet (-q)          no console output\n'''
     '''--gzip (-gz)          tar and gzip TIdeS output\n'''
     '''--help (-h)           show this help message and exit'''))
@@ -47,6 +49,13 @@ def collect_args():
 
     g.add_argument('--model','-m', action = 'store',
         metavar = '[Trained-RFC]', type = str, default = None,
+        help = argparse.SUPPRESS)
+
+    g.add_argument('--kmer','-k', action = 'store',
+        default = 3, metavar = '[kmer]', type = int,
+        help = argparse.SUPPRESS)
+
+    g.add_argument('--overlap','-ov', action = 'store_true',
         help = argparse.SUPPRESS)
 
     g.add_argument('--quiet','-q', action = 'store_true',
@@ -98,6 +107,8 @@ def collect_args():
         help = argparse.SUPPRESS)
 
 
+
+
     # Ensures that just script description provided if no arguments provided
     if len(sys.argv[1:]) == 0:
         print(ascii_logo_vsn())
@@ -118,7 +129,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.2.0
+     Version 1.3.0
     """
     return alv_msg
 
@@ -140,6 +151,8 @@ def predict_orfs(
                 taxon_code:str,
                 dmnd_db: str,
                 gcode: str = '1',
+                kmer: int = 3,
+                overlap: bool = False,
                 pretrained = None,
                 min_len:int = 300,
                 pid: float = 0.97,
@@ -147,6 +160,26 @@ def predict_orfs(
                 threads: int = 1,
                 strand:str = 'both',
                 verb: bool = True) -> None:
+
+    """
+    Predicts in-frame Open Reading Frames (ORFs) from a given transcriptome.
+
+    Parameters
+    ----------
+    fasta_file: FASTA formatted transcriptome file
+    taxon_code: species/taxon name or abbreviated code
+    dmnd_db: path to a protein database for DIAMOND
+    gcode: genetic code used for ORF-calling and translation steps
+    pretrained: random forest model from previous TIdeS run
+    min_len: minimum ORF length to consider
+    pid: percent identity (0-1.0) for removing redundant sequences
+    evalue: maximum e-value to keep hits from DIAMOND
+    threads: number of threads to use
+    strand: designate strand(s) for ORF calling
+    verb: verbose print statements
+
+    Returns current time to track overall runtime.
+    """
 
     sttime = time.time()
 
@@ -161,6 +194,8 @@ def predict_orfs(
                                     threads,
                                     pid,
                                     verb)
+
+
 
     if verb:
         if not pretrained:
@@ -179,7 +214,8 @@ def predict_orfs(
                                                             evalue,
                                                             threads,
                                                             strand,
-                                                            3,
+                                                            kmer,
+                                                            overlap,
                                                             verb)
 
     if verb:
@@ -219,7 +255,26 @@ def eval_contam(
             pretrained: str = None,
             min_len: int = 300,
             threads: int = 1,
+            kmer: int = 3,
+            overlap = True,
             verb: bool = True) -> None:
+
+    """
+    Binary classification of target versus non-target sequences
+
+    Parameters
+    ----------
+    fasta_file: FASTA formatted transcriptome file
+    taxon_code: species/taxon name or abbreviated code
+    sister_summary: tab-delimited file with user-defined "target" and "non-target" sequences
+    gcode: genetic code used for ORF-calling and translation steps
+    pretrained: random forest model from previous TIdeS run
+    min_len: minimum ORF length to consider
+    threads: number of cpu threads to use
+    verb: verbose print statements
+
+    Returns current time to track overall runtime
+    """
 
     sttime = time.time()
 
@@ -242,7 +297,8 @@ def eval_contam(
                                                 pretrained,
                                                 sttime,
                                                 gcode,
-                                                3,
+                                                kmer,
+                                                overlap,
                                                 verb)
 
     if verb:
@@ -307,6 +363,8 @@ if __name__ == '__main__':
                                 args.taxon,
                                 args.db,
                                 args.gencode,
+                                args.kmer,
+                                args.overlap,
                                 args.model,
                                 args.min_orf,
                                 args.pid,
@@ -325,6 +383,8 @@ if __name__ == '__main__':
                             args.model,
                             args.min_orf,
                             args.threads,
+                            args.kmer,
+                            args.overlap,
                             not args.quiet)
 
 
