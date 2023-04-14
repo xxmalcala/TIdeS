@@ -33,7 +33,7 @@ def extract_features(feature_dict: dict, contam: bool, training: bool):
 def train_rfc(X_ref_df, y_ref_df, threads: int):
     X_train, X_test, y_train, y_test = train_test_split(X_ref_df,
                                                         y_ref_df,
-                                                        test_size = 0.2,
+                                                        test_size = 0.3,
                                                         random_state = 42,
                                                         stratify = y_ref_df)
     param_grid = {
