@@ -250,6 +250,41 @@ def ref_orf_dmnd(
         return dmnd_rslt.stdout.split('\n')[:-1]
 
 
+def randomize_orientation(ref_orf_dict: dict) -> dict:
+    seq_subsamp = sample(list(ref_orf_dict.keys()), int(len(ref_orf_dict)))
+    rnd_ornt = {}
+
+    for n in range(0, len(seq_subsamp)):
+        if n < len(seq_subsamp) * 0.5:
+            rnd_ornt[f'{seq_subsamp[n]}_RF1'] = ref_orf_dict[seq_subsamp[n]]
+
+        else:
+            rf = sample([-3,-2,-1, 2, 3], 1)[0]
+            if rf > 0:
+                rnd_ornt[f'{seq_subsamp[n]}_RF{rf}'] = trim_seq(ref_orf_dict[seq_subsamp[n]], rf)
+
+            else:
+                temp_seq = f'{Seq(ref_orf_dict[seq_subsamp[n]]).reverse_complement()}'
+                rnd_ornt[f'{seq_subsamp[n]}_RF{abs(rf) + 3}'] = trim_seq(temp_seq, abs(rf))
+
+    return rnd_ornt
+
+
+def freq_counts(orf_dict: dict, overlap: bool = False, kmer: int = 3) -> dict:
+    orf_kmer_dict = {}
+    kmer_set = [''.join(i) for i in product(['A', 'T', 'G', 'C'], repeat = kmer)]
+
+    for k, v in orf_dict.items():
+        if overlap:
+            kmer_list = [v[n:n+kmer] for n in range(0, len(v)-(kmer-1))]
+
+        else:
+            kmer_list = [v[n:n+kmer] for n in range(0, len(v), kmer)]
+        orf_kmer_dict[k] = {kmer: (kmer_list.count(kmer) / len(kmer_list)) for kmer in kmer_set}
+
+    return orf_kmer_dict
+
+
 def generate_ref_orfs(
                     fasta_file: str,
                     txn_code: str,
@@ -258,7 +293,7 @@ def generate_ref_orfs(
                     min_len: int,
                     evalue: float,
                     threads: int,
-                    verb: bool ) -> dict:
+                    verb: bool) -> dict:
 
     ref_orf_fas = f'{txn_code}_TIdeS/ORF_Calling/{txn_code}.{min_len}bp.DMND_REF_ORFs.fas'
 
@@ -297,37 +332,6 @@ def generate_ref_orfs(
     return ref_orfs, rnd_orf_orient
 
 
-def randomize_orientation(ref_orf_dict: dict) -> dict:
-    seq_subsamp = sample(list(ref_orf_dict.keys()), int(len(ref_orf_dict)))
-    rnd_ornt = {}
-
-    for n in range(0, len(seq_subsamp)):
-        if n < len(seq_subsamp) * 0.5:
-            rnd_ornt[f'{seq_subsamp[n]}_RF1'] = ref_orf_dict[seq_subsamp[n]]
-
-        else:
-            rf = sample([-3,-2,-1, 2, 3], 1)[0]
-            if rf > 0:
-                rnd_ornt[f'{seq_subsamp[n]}_RF{rf}'] = trim_seq(ref_orf_dict[seq_subsamp[n]], rf)
-
-            else:
-                temp_seq = f'{Seq(ref_orf_dict[seq_subsamp[n]]).reverse_complement()}'
-                rnd_ornt[f'{seq_subsamp[n]}_RF{abs(rf) + 3}'] = trim_seq(temp_seq, abs(rf))
-
-    return rnd_ornt
-
-
-def freq_counts(orf_dict: dict, kmer: int = 3) -> dict:
-    orf_kmer_dict = {}
-    kmer_set = [''.join(i) for i in product(['A', 'T', 'G', 'C'], repeat = kmer)]
-
-    for k, v in orf_dict.items():
-        kmer_list = [v[n:n+kmer] for n in range(0, len(v), kmer)]
-        orf_kmer_dict[k] = {kmer: (kmer_list.count(kmer) / len(kmer_list)) for kmer in kmer_set}
-
-    return orf_kmer_dict
-
-
 def generate_contam_calls(
                         targ_seqs: dict,
                         non_targ_seqs: dict,
@@ -336,7 +340,8 @@ def generate_contam_calls(
                         pretrained: str,
                         start_time,
                         gcode: str = '1',
-                        kmer: int = 3,
+                        kmer: int = 4,
+                        overlap: bool = False,
                         verb: bool = True):
 
     if verb:
@@ -349,13 +354,12 @@ def generate_contam_calls(
         if len(i)%3 > 0:
             tmp_query[i.id] = f'{i.seq}'[:-(len(i)%3)]
 
-    query_orfs = freq_counts(tmp_query)
+    query_orfs = freq_counts(tmp_query, overlap, kmer)
     ref_orfs = None
 
     if not pretrained:
-        ref_orfs = freq_counts(targ_seqs)
-        ref_orfs.update(freq_counts(non_targ_seqs))
-
+        ref_orfs = freq_counts(targ_seqs, overlap, kmer)
+        ref_orfs.update(freq_counts(non_targ_seqs, overlap, kmer))
 
     return query_orfs, ref_orfs
 
@@ -372,6 +376,7 @@ def generate_orf_calls(
                     threads: int = 1,
                     strand: str = 'both',
                     kmer: int = 3,
+                    overlap: bool = False,
                     verb: bool = True):
 
     if verb:
@@ -390,7 +395,6 @@ def generate_orf_calls(
 
     else:
 
-
         tmp_ref_orfs, tmp_rnd_rfs = generate_ref_orfs(fasta_file,
                                                         txn_code,
                                                         start_time,
@@ -399,11 +403,12 @@ def generate_orf_calls(
                                                         evalue,
                                                         threads,
                                                         verb)
+                                                        
         if verb:
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Preparing training and query ORFs for {txn_code}')
 
-        rnd_orfs = freq_counts(tmp_rnd_rfs)
+        rnd_orfs = freq_counts(tmp_rnd_rfs, overlap, kmer)
 
-    query_orfs = freq_counts(init_query_orfs)
+    query_orfs = freq_counts(init_query_orfs, overlap, kmer)
 
     return query_orfs, rnd_orfs, comp_orf_fas
