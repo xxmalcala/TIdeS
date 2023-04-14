@@ -6,16 +6,22 @@ import os, sys
 def diamond_blast(query_fas, ref_fas, outname) -> str:
     out_tsv = f'{outname}.BLASTX_RefDB.tsv'
     dmnd_cmd = f'diamond blastx -q {query_fas} -d {ref_fas} -k 1 -o {out_tsv} ' \
-                '--ultra-sensitive -f 6 qseqid sseqid qlen slen length pident qframe --quiet'
+                '--very-sensitive -f 6 qseqid sseqid qlen slen ' \
+                'length pident qframe --quiet'
+
     os.system(dmnd_cmd)
+
     return out_tsv
 
 def parse_hits(query_fas: str, ref_fas: str, outname: str) -> None:
     dmnd_hits = diamond_blast(query_fas, ref_fas, outname)
 
     qseqs = len([i for i in open(query_fas).readlines() if i[0] == '>'])
+
     unique_txp_hits = [(i.split('.pORF')[0], int(i.split('\t')[-1])) for i in open(dmnd_hits).readlines()]
+
     uth = len(set([i[0] for i in unique_txp_hits]))
+
     crf_hits = len(set([i[0] for i in unique_txp_hits if i[-1] == 1]))
 
     with open(f'{outname}.CRF.Summary.tsv','w+') as w:
