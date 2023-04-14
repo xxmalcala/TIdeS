@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
-import argparse, glob, os, shutil, sys, time
+"""
+stuff...
 
+"""
+
+import argparse, glob, os, shutil, sys, time
 from datetime import timedelta
+
 from Bio import SeqIO
 
 from bin import filter_txps as ft
@@ -278,6 +283,8 @@ if __name__ == '__main__':
     Requirements:
     -- Tab-delimited
     -- Target/Non-Target OR 1/0
+
+    Also provide options for multi-classes (e.g., not solely current binary approach)...
     """
 
     args = collect_args()

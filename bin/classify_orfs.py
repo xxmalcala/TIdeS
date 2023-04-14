@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 
-import pickle, time
-import pandas as pd
+"""Performs binary classification of given ORFs using supervised training of random forests.
 
+
+Dependencies include: Sci-Kit Learn."""
+
+import pickle, time
 from datetime import timedelta
-from numpy import argmax
 from pathlib import Path
 
+from numpy import argmax
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import (train_test_split, GridSearchCV)
 
@@ -115,7 +119,6 @@ def best_porf(pos_pred_seqs, tds_tsv):
         final_pORFs += [i[0] for i in v if i[1] == top_conf]
 
     return pos_pred_seqs, final_pORFs
-
 
 
 def classify_orfs(

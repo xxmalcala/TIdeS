@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 
-import re, subprocess, sys, time
-import numpy as np
+"""Extracts putative complete ORFs from a given FASTA-file with a supported user-selected
+translation table (i.e., genetic code).
 
+Note that this does include methods to use DIAMOND's BLASTX to identify incomplete
+portions of ORFs, with the intent to provide a supervised set of 'in-frame' ORFs
+for training in later steps.
+
+Dependencies include: DIAMOND."""
+
+import re, subprocess, sys, time
 from datetime import timedelta
 from itertools import product
 from pathlib import Path
 from random import sample
 
+import numpy as np
 from Bio import SeqIO
 from Bio.Seq import Seq
 

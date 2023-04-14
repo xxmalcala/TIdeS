@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
+"""Methods to generate output FASTA-files based on the classification steps from
+other modules."""
+
 import shutil, sys
-from Bio import SeqIO
 from collections import defaultdict
+
+from Bio import SeqIO
 
 from bin import orf_call as oc
 

@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 
-import shutil, subprocess, time
-from datetime import timedelta
-from pathlib import Path
-from Bio import SeqIO
-
 """Script prepares folder(s) and filters the transcriptome by length and putative
 rRNA sequences.
 
@@ -12,6 +7,15 @@ Note that rRNA filtering is performed by Barrnap. Taxa with unusual rRNAs, such
 as Foraminifera, will need to have their rRNAs removed independently.
 
 Dependencies include: Barrnap, CD-HIT."""
+
+
+import shutil, subprocess, time
+from datetime import timedelta
+from pathlib import Path
+
+from Bio import SeqIO
+
+
 
 
 def prep_dir(new_dir: str) -> None:
