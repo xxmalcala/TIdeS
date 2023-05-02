@@ -15,7 +15,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import (train_test_split, GridSearchCV)
 
 
-def extract_features(feature_dict: dict, contam: bool, training: bool):
+def extract_features(feature_dict: dict, contam: bool, training: bool) -> pd.core.frame.DataFrame:
     feature_df = pd.DataFrame.from_dict(feature_dict, orient = 'index')
     if training:
         if contam:
@@ -58,7 +58,7 @@ def train_rfc(X_ref_df, y_ref_df, threads: int):
     return rfc.fit(X_train, y_train)
 
 
-def save_rfc(rfc_model, txn_code):
+def save_rfc(rfc_model, txn_code) -> None:
     rfc_pkl = f'{txn_code}_TIdeS/{txn_code}.TIdeS.pkl'
     pickle.dump(rfc_model, open(rfc_pkl, 'wb+'))
 

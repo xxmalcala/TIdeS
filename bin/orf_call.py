@@ -7,7 +7,7 @@ Note that this does include methods to use DIAMOND's BLASTX to identify incomple
 portions of ORFs, with the intent to provide a supervised set of 'in-frame' ORFs
 for training in later steps.
 
-Dependencies include: DIAMOND."""
+Dependencies include: BioPython, DIAMOND."""
 
 import re, subprocess, sys, time
 from datetime import timedelta
@@ -403,7 +403,7 @@ def generate_orf_calls(
                                                         evalue,
                                                         threads,
                                                         verb)
-                                                        
+
         if verb:
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Preparing training and query ORFs for {txn_code}')
 

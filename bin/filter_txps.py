@@ -20,8 +20,7 @@ def prep_dir(new_dir: str) -> None:
     Path(new_dir).mkdir(parents = True, exist_ok = True)
 
 
-def filt_len(
-            fasta_file: str,
+def filt_len(fasta_file: str,
             taxon_code: str,
             out_dir: str,
             min_len: int) -> str:
@@ -56,8 +55,7 @@ def filt_len(
     return len_filt_fasta
 
 
-def clust_txps(
-                fasta_file: str,
+def clust_txps(fasta_file: str,
                 taxon_code: str,
                 out_dir: str,
                 pid: float,
@@ -94,8 +92,7 @@ def clust_txps(
     return clust_fas
 
 
-def run_barrnap(
-                fasta_file: str,
+def run_barrnap(fasta_file: str,
                 threads: int) -> list:
     """
     Run Barrnap to remove easily identifiable rRNAs
@@ -124,8 +121,7 @@ def run_barrnap(
     return rRNA_seqs
 
 
-def remove_rRNA(
-                fasta_file: str,
+def remove_rRNA(fasta_file: str,
                 taxon_code: str,
                 out_dir: str,
                 min_len: int,
@@ -167,13 +163,12 @@ def remove_rRNA(
     return rRNA_clean_fas
 
 
-def prep_contam(
-            fasta_file: str,
-            taxon_code: str,
-            sis_smry: str,
-            pretrained: str,
-            start_time,
-            verb: bool = True) -> dict:
+def prep_contam(fasta_file: str,
+                taxon_code: str,
+                sis_smry: str,
+                pretrained: str,
+                start_time,
+                verb: bool = True) -> dict:
 
     """
     Prepares target/non-target sequences from a FASTA formatted file using a user
@@ -248,14 +243,13 @@ def prep_contam(
     return targ_seqs, non_targ_seqs
 
 
-def filter_transcripts(
-                    fasta_file: str,
-                    taxon_code: str,
-                    start_time,
-                    min_len: int = 300,
-                    threads: int = 4,
-                    pid: float = 0.97,
-                    verb: bool = True) -> str:
+def filter_transcripts(fasta_file: str,
+                        taxon_code: str,
+                        start_time,
+                        min_len: int = 300,
+                        threads: int = 4,
+                        pid: float = 0.97,
+                        verb: bool = True) -> str:
     """
     Performs all the initial filtering steps to ease classification
 
