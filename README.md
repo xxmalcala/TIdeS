@@ -3,10 +3,11 @@
 **T**ranscript **Ide**ntification and **S**election (TIdeS) is a method to identify putative open reading frames (pORFs) from a given transcriptome and is able to aid in the bulk decontamination of sequences from "messy" transcriptomic data. Overall, TIdeS couples sequence composition with ML approaches to discern pORFs in the correct reading frame and to identify target sequences from contaminated datasets (e.g. kleptoplastic organisms). 
 
 ## Dependencies
-+ [Python 3.6+](https://www.python.org/downloads/)
++ [Python 3.7+](https://www.python.org/downloads/)
   - [BioPython](https://biopython.org/wiki/Download)
   - [Pandas](https://pandas.pydata.org/)
   - [scikit-learn](https://scikit-learn.org/stable/)
+  - [Optuna](https://optuna.org/#installation)
 + [DIAMOND](https://github.com/bbuchfink/diamond)
 + [CD-HIT](https://github.com/weizhongli/cdhit)
 + [Barrnap](https://github.com/tseemann/barrnap)
@@ -79,8 +80,6 @@ python3 tides.py -f example/TBD -n TBD -d TBD -c
 ```
 
 ### Planned Updates - 05-2023
-- [ ] Compare XGBoost to Sci-kit Learn
 - [ ] Add basic EDS for evaluating contamination
-- [ ] Incorporate HyperOpt
 - [ ] Conda and/or PyPi packaging
 - [ ] Prepare basic examples (pORF-calls, contamination, EDS for contamination)
