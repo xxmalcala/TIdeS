@@ -270,21 +270,6 @@ def randomize_orientation(ref_orf_dict: dict) -> dict:
     return rnd_ornt
 
 
-def freq_counts(orf_dict: dict, overlap: bool = False, kmer: int = 3) -> dict:
-    orf_kmer_dict = {}
-    kmer_set = [''.join(i) for i in product(['A', 'T', 'G', 'C'], repeat = kmer)]
-
-    for k, v in orf_dict.items():
-        if overlap:
-            kmer_list = [v[n:n+kmer] for n in range(0, len(v)-(kmer-1))]
-
-        else:
-            kmer_list = [v[n:n+kmer] for n in range(0, len(v), kmer)]
-        orf_kmer_dict[k] = {kmer: (kmer_list.count(kmer) / len(kmer_list)) for kmer in kmer_set}
-
-    return orf_kmer_dict
-
-
 def generate_ref_orfs(
                     fasta_file: str,
                     txn_code: str,
@@ -330,6 +315,21 @@ def generate_ref_orfs(
             w.write(f'>{k}\n{v}\n')
 
     return ref_orfs, rnd_orf_orient
+
+
+def freq_counts(orf_dict: dict, overlap: bool = False, kmer: int = 3) -> dict:
+    orf_kmer_dict = {}
+    kmer_set = [''.join(i) for i in product(['A', 'T', 'G', 'C'], repeat = kmer)]
+
+    for k, v in orf_dict.items():
+        if overlap:
+            kmer_list = [v[n:n+kmer] for n in range(0, len(v)-(kmer-1))]
+
+        else:
+            kmer_list = [v[n:n+kmer] for n in range(0, len(v), kmer)]
+        orf_kmer_dict[k] = {kmer: (kmer_list.count(kmer) / len(kmer_list)) for kmer in kmer_set}
+
+    return orf_kmer_dict
 
 
 def generate_contam_calls(

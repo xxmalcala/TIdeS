@@ -204,7 +204,7 @@ def prep_contam(fasta_file: str,
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Parsing target/non-target assignments')
 
-    seq_summary = {i.split('\t')[0]:i.rstrip().split('\t')[1].lower() for i in open(sis_smry).readlines()[1:]}
+    seq_summary = {i.split('\t')[0]:i.rstrip().split('\t')[1].lower() for i in open(sis_smry).readlines()}
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Saving target/non-target sequences')
@@ -226,16 +226,16 @@ def prep_contam(fasta_file: str,
             except KeyError:
                 continue
 
-    if 50 < min([len(targ_seqs), len(non_targ_seqs)]) < 100:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
-            'Fewer than 100 examples each of target and non-target sequences were assigned.')
-
-    elif min([len(targ_seqs), len(non_targ_seqs)]) < 50:
+    if min([len(targ_seqs), len(non_targ_seqs)]) < 50:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Error: ' \
             'Fewer than 50 examples each of target and non-target sequences were assigned.')
 
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Exiting TIdeS: Too Few Training Seqs.\n')
         sys.exit()
+
+    elif 50 <= min([len(targ_seqs), len(non_targ_seqs)]) < 100:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
+            'Fewer than 100 target and 100 non-target sequences were assigned.')
 
     else:
         pass

@@ -24,25 +24,46 @@ In practice, this may also extend towards extraction of transcripts from a targe
 
 ## Quick Start
 
-You can run **TIdeS** on a _de novo_ assembled transcriptome:
-  
-    python3 tides.py --fin myTranscriptome.fasta --taxon myTaxon --db proteinDB
+### ORF-Calling and Assessment
 
-Additionally, several genetic codes/translation tables are supported ([NCBI translation tables: 1,5,6,10,12,26,29,30](https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi)).
+**Inputs**
+- FASTA formatted transcriptome assembly
+- Taxon name (e.g., Homo sapiens, Op_me_Hsap)
+- Protein database (can be prepared by "prep_tides_db.sh" in the **util** folder)
 
-    python3 tides.py --fin myTranscriptome.fasta --taxon myTaxon --db proteinDB --genetic-code 6
+```
+python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
+```
+
+#### Arguments
+
+##### Required
+
+```
+-f, --fin           Input file in FASTA format
+-n, --taxon         Taxon-name or PhyloToL taxon-code
+-d, --db            Protien database (FASTA or DIAMOND format)
+```
+
+##### Optional
+-p, --threads       Number of CPU threads (default = 1)
+-m, --model         Previously trained TIdeS model (".pkl" file)
+-k, --kmer          kmer size for generating sequence features (default = 3)
+-q, --quiet         No console output
+-ov, --overlap      Permit overlapping kmers (see --kmer)
+-gz, --gzip         Tar and gzip TIdeS output
+```
+
+##### Optional
+
 
 To see all options:
     
     python3 tides.py --help
 
-### Planned Updates - 03-2023
-- [x] Auto-optimize Random Forests (GridSearchCV)
-- [x] Determine most useful set of composition criteria on broad phylogenomic scale (euks for now)
-- [X] Automate TIdeS pipeline
-- [X] tarball packaging
-- [X] Rethinking folder(s) structure and outputs...
-- [X] Support translation tables by NAME too, not just number (e.g. "Universal", "Ciliate", etc)
+### Planned Updates - 05-2023
+- [ ] Compare XGBoost to Sci-kit Learn
+- [ ] Incorporate HyperOpt
 - [ ] Conda and PyPi packaging
 - [ ] Prepare basic examples (orientation/contamination)
-- [ ] Add method to eval pre-called ORFs with/without pre-trained model
+

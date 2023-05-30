@@ -129,7 +129,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.3.0
+     Version 1.0.0
     """
     return alv_msg
 
@@ -165,17 +165,17 @@ def predict_orfs(fasta_file: str,
 
     Parameters
     ----------
-    fasta_file: FASTA formatted transcriptome file
-    taxon_code: species/taxon name or abbreviated code
-    dmnd_db: path to a protein database for DIAMOND
-    gcode: genetic code used for ORF-calling and translation steps
-    pretrained: random forest model from previous TIdeS run
-    min_len: minimum ORF length to consider
-    pid: percent identity (0-1.0) for removing redundant sequences
-    evalue: maximum e-value to keep hits from DIAMOND
-    threads: number of threads to use
-    strand: designate strand(s) for ORF calling
-    verb: verbose print statements
+    fasta_file:    FASTA formatted transcriptome file
+    taxon_code:    species/taxon name or abbreviated code
+    dmnd_db:       path to a protein database for DIAMOND
+    gcode:         genetic code used for ORF-calling and translation steps
+    pretrained:    random forest model from previous TIdeS run
+    min_len:       minimum ORF length to consider
+    pid:           percent identity (0-1.0) for removing redundant sequences
+    evalue:        maximum e-value to keep hits from DIAMOND
+    threads:       number of threads to use
+    strand:        designate strand(s) for ORF calling
+    verb:          verbose print statements
 
     Returns current time to track overall runtime.
     """

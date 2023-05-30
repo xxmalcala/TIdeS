@@ -8,66 +8,91 @@ Dependencies include: Sci-Kit Learn."""
 import pickle, time
 from datetime import timedelta
 from pathlib import Path
-
 from numpy import argmax
+import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import (train_test_split, GridSearchCV)
+
+import optuna
+
+import sklearn.ensemble
+import sklearn.metrics
+import sklearn.model_selection
 
 
 def extract_features(feature_dict: dict, contam: bool, training: bool) -> pd.core.frame.DataFrame:
     feature_df = pd.DataFrame.from_dict(feature_dict, orient = 'index')
-    if training:
-        if contam:
-            y_ref_df = feature_df.index.map(lambda x: 1 if x.split('_')[-1] == 'Target' else 0)
 
-        else:
-            y_ref_df = feature_df.index.map(lambda x: 1 if x[-1] == '1' else 0)
+    if not training:
+        return feature_df
+
+    elif contam:
+        y_ref_df = feature_df.index.map(lambda x: 1 if x.split('_')[-1] == 'Target' else 0)
 
         return feature_df, y_ref_df
 
-    return feature_df
+    else:
+        y_ref_df = feature_df.index.map(lambda x: 1 if x[-1] == '1' else 0)
+
+        return feature_df, y_ref_df
 
 
+def objective(trial, X_train, y_train, threads):
+    rf_params = {
+        'n_estimators': trial.suggest_int('n_estimators', 100, 500, 100),
+        'max_depth': trial.suggest_int('max_depth', 4, 16, 2),
+        'max_features': trial.suggest_categorical('max_features', choices=['sqrt', 'log2']),
+        'min_samples_split': trial.suggest_int('min_samples_split', 2, 5),
+        'criterion': trial.suggest_categorical('criterion', ['gini', 'entropy']),
+        'n_jobs': int(threads),
+        'oob_score': True,
+        'random_state': 121219
+        }
 
-def train_rfc(X_ref_df, y_ref_df, threads: int):
-    X_train, X_test, y_train, y_test = train_test_split(X_ref_df,
-                                                        y_ref_df,
-                                                        test_size = 0.3,
-                                                        random_state = 42,
-                                                        stratify = y_ref_df)
-    param_grid = {
-        'n_estimators': [300, 500],
-        'max_features': ['sqrt', 'log2'],
-        'min_samples_split': [2, 5],
-        'max_depth' : [4, 8, 12, 16],
-        'criterion' :['gini', 'entropy'],
-        'oob_score': [True],
-        'n_jobs': [int(threads)]}
+    clf = sklearn.ensemble.RandomForestClassifier(**rf_params)
 
-    CV_rfc = GridSearchCV(
-        estimator = RandomForestClassifier(random_state = 42),
-        param_grid = param_grid,
-        cv = 5,
-        n_jobs = int(threads))
+    clf_score = sklearn.model_selection.cross_val_score(
+                                            clf,
+                                            X_train,
+                                            y_train,
+                                            n_jobs = threads,
+                                            cv = 5
+                                            ).mean()
 
-    CV_rfc.fit(X_train, y_train)
-
-    rfc = RandomForestClassifier(random_state = 42, **CV_rfc.best_params_)
-
-    return rfc.fit(X_train, y_train)
+    return clf_score
 
 
-def save_rfc(rfc_model, txn_code) -> None:
+def train_rfc(X_ref_df, y_ref_df, threads: int = -1):
+    X_train, X_test, y_train, y_test = \
+        sklearn.model_selection.train_test_split(
+                                    X_ref_df,
+                                    y_ref_df,
+                                    test_size = 0.3,
+                                    random_state = 42,
+                                    stratify = y_ref_df)
+
+    optuna.logging.set_verbosity(optuna.logging.INFO)
+    study = optuna.create_study(direction = 'maximize')
+    study.optimize(lambda trial: objective(trial, X_train, y_train, threads), n_trials = 50)
+
+    trial = study.best_trial
+
+    opt_rfc = sklearn.ensemble.RandomForestClassifier(random_state = 42, **trial.params)
+
+    opt_rfc.fit(X_train, y_train)
+
+    return opt_rfc, trial
+
+
+def save_rfc(rfc_model, txn_code: str) -> None:
     rfc_pkl = f'{txn_code}_TIdeS/{txn_code}.TIdeS.pkl'
     pickle.dump(rfc_model, open(rfc_pkl, 'wb+'))
 
 
 def process_predictions(
-                    txn_code: str,
-                    query_preds,
-                    query_df: pd.core.frame.DataFrame,
-                    contam: bool = False) -> dict:
+        txn_code: str,
+        query_preds,
+        query_df: pd.core.frame.DataFrame,
+        contam: bool = False) -> dict:
 
     tds_dir = f'{txn_code}_TIdeS/Classified/'
     Path(tds_dir).mkdir(parents = True, exist_ok = True)
@@ -90,7 +115,6 @@ def process_predictions(
                         f'{query_preds[n][1]*100:.2f}\n')
                 if contam:
                     contam_seqs.append(query_df.index[n])
-
             else:
                 pos_pred_seqs.append(query_df.index[n])
                 w.write(f'{query_df.index[n]}\t{pos}\t'
@@ -142,8 +166,8 @@ def classify_orfs(
         if verb:
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Training TIdeS')
 
-        trained_rfc = train_rfc(X_ref_df, y_ref_df, threads)
-
+        # trained_rfc, finished_trial = train_rfc(X_ref_df, y_ref_df, threads)
+        trained_rfc, finished_trial = train_rfc(X_ref_df, y_ref_df, threads)
     else:
         trained_rfc = pickle.load(open(pretrained, 'rb'))
 
