@@ -21,35 +21,18 @@
 - FASTA formatted transcriptome assembly
 - Taxon name (e.g., Homo sapiens, Op_me_Hsap)
 - Protein database (can be prepared by "prep_tides_db.sh" in the **util** folder)
-<<<<<<< HEAD
 
 ```
 python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
 ```
-
-#### Arguments
-
-##### Required
-
-=======
-```
-python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
-```
-#### Arguments
-##### Required
->>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
+##### Required Arguments
 ```
 -f, --fin           Input file in FASTA format
 -n, --taxon         Taxon-name or PhyloToL taxon-code
 -d, --db            Protien database (FASTA or DIAMOND format)
 ```
-<<<<<<< HEAD
-
-##### Optional
-=======
-##### Optional
+##### Optional Arguments
 ```
->>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
 -p, --threads       Number of CPU threads (default = 1)
 -m, --model         Previously trained TIdeS model (".pkl" file)
 -k, --kmer          kmer size for generating sequence features (default = 3)
@@ -57,27 +40,12 @@ python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <prote
 -ov, --overlap      Permit overlapping kmers (see --kmer)
 -gz, --gzip         Tar and gzip TIdeS output
 ```
-<<<<<<< HEAD
-
-##### Optional
-
-=======
 #### Example
 
 ```cmd
 python3 tides.py -f example/TBD -n TBD -d TBD
 ```
->>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
 
-
-<<<<<<< HEAD
-### Planned Updates - 05-2023
-- [ ] Compare XGBoost to Sci-kit Learn
-- [ ] Incorporate HyperOpt
-- [ ] Conda and PyPi packaging
-- [ ] Prepare basic examples (orientation/contamination)
-
-=======
 ### Decontamination
 **Note that these options are currently being streamlined/changed...**
 **Inputs**
@@ -88,21 +56,12 @@ python3 tides.py -f example/TBD -n TBD -d TBD
 python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
 ```
 Kmer-size and overlap can have dramatic impact on the inference of target/non-target sequences. For contaminated taxa with highly similar composition (e.g. Monocystis agilis [parasite] and Helobdella robusta [host]), recommended to include ```-k 4 -ov``` in the command.
-#### Arguments
-##### Required
+
+##### Required Arguments
 ```
 -f, --fin           Input file in FASTA format
 -n, --taxon         Taxon-name or PhyloToL taxon-code
 -c, --contam        Table of sequences annotated as 'target' or 'non-target'
-```
-##### Optional
-```
--p, --threads       Number of CPU threads (default = 1)
--m, --model         Previously trained TIdeS model (".pkl" file)
--k, --kmer          kmer size for generating sequence features (default = 3)
--q, --quiet         No console output
--ov, --overlap      Permit overlapping kmers (see --kmer)
--gz, --gzip         Tar and gzip TIdeS output
 ```
 #### Example
 
@@ -114,4 +73,3 @@ python3 tides.py -f example/TBD -n TBD -d TBD -c
 - [ ] Add basic EDS for evaluating contamination
 - [ ] Conda and/or PyPi packaging
 - [ ] Prepare basic examples (pORF-calls, contamination, EDS for contamination)
->>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
