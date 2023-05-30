@@ -1,22 +1,13 @@
 # TIdeS
 
-**T**ranscript **Ide**ntification and **S**election
-
-## Motivation
-
-Many projects simply use the "longest" complete ORF (using tools such as TransDecoder) prior to phylogenomic studies. This has many potential implications on the results, especially when identifying lineage-specific gene families (LSGFs) from transcriptomic data, given the partial nature of most RNA-seq approaches.
-
-**TIdeS** uses a Random Forest Classifiers to select the most "likely" open reading frame(s) from a transcript. After aligning transcripts against a protein database, TIdeS accounts for the composition of alignable ORFs to infer **complete** putative ORFs (pORFs) from the transcriptome.
-
-In practice, this may also extend towards extraction of transcripts from a targeted taxon in a contaminated transcriptome... Development for this is TBD.
-
-**TIdeS** will (hopefully) help mitigate these issues, focusing on extracting the transcripts and ORFs most like a small robustly curated samples.
+**T**ranscript **Ide**ntification and **S**election (TIdeS) is a method to identify putative open reading frames (pORFs) from a given transcriptome and is able to aid in the bulk decontamination of sequences from "messy" transcriptomic data. Overall, TIdeS couples sequence composition with ML approaches to discern pORFs in the correct reading frame and to identify target sequences from contaminated datasets (e.g. kleptoplastic organisms). 
 
 ## Dependencies
-+ [Python 3.6+](https://www.python.org/downloads/)
++ [Python 3.7+](https://www.python.org/downloads/)
   - [BioPython](https://biopython.org/wiki/Download)
   - [Pandas](https://pandas.pydata.org/)
   - [scikit-learn](https://scikit-learn.org/stable/)
+  - [Optuna](https://optuna.org/#installation)
 + [DIAMOND](https://github.com/bbuchfink/diamond)
 + [CD-HIT](https://github.com/weizhongli/cdhit)
 + [Barrnap](https://github.com/tseemann/barrnap)
@@ -30,6 +21,7 @@ In practice, this may also extend towards extraction of transcripts from a targe
 - FASTA formatted transcriptome assembly
 - Taxon name (e.g., Homo sapiens, Op_me_Hsap)
 - Protein database (can be prepared by "prep_tides_db.sh" in the **util** folder)
+<<<<<<< HEAD
 
 ```
 python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
@@ -39,13 +31,25 @@ python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <prote
 
 ##### Required
 
+=======
+```
+python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
+```
+#### Arguments
+##### Required
+>>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
 ```
 -f, --fin           Input file in FASTA format
 -n, --taxon         Taxon-name or PhyloToL taxon-code
 -d, --db            Protien database (FASTA or DIAMOND format)
 ```
+<<<<<<< HEAD
 
 ##### Optional
+=======
+##### Optional
+```
+>>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
 -p, --threads       Number of CPU threads (default = 1)
 -m, --model         Previously trained TIdeS model (".pkl" file)
 -k, --kmer          kmer size for generating sequence features (default = 3)
@@ -53,17 +57,61 @@ python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <prote
 -ov, --overlap      Permit overlapping kmers (see --kmer)
 -gz, --gzip         Tar and gzip TIdeS output
 ```
+<<<<<<< HEAD
 
 ##### Optional
 
+=======
+#### Example
 
-To see all options:
-    
-    python3 tides.py --help
+```cmd
+python3 tides.py -f example/TBD -n TBD -d TBD
+```
+>>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
 
+
+<<<<<<< HEAD
 ### Planned Updates - 05-2023
 - [ ] Compare XGBoost to Sci-kit Learn
 - [ ] Incorporate HyperOpt
 - [ ] Conda and PyPi packaging
 - [ ] Prepare basic examples (orientation/contamination)
 
+=======
+### Decontamination
+**Note that these options are currently being streamlined/changed...**
+**Inputs**
+- FASTA formatted transcriptome assembly
+- Taxon name (e.g., Myrionecta rubrum, Sr_ci_Mrub)
+- Table of sequence names annotated as 'target' or 'non-target'
+```
+python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
+```
+Kmer-size and overlap can have dramatic impact on the inference of target/non-target sequences. For contaminated taxa with highly similar composition (e.g. Monocystis agilis [parasite] and Helobdella robusta [host]), recommended to include ```-k 4 -ov``` in the command.
+#### Arguments
+##### Required
+```
+-f, --fin           Input file in FASTA format
+-n, --taxon         Taxon-name or PhyloToL taxon-code
+-c, --contam        Table of sequences annotated as 'target' or 'non-target'
+```
+##### Optional
+```
+-p, --threads       Number of CPU threads (default = 1)
+-m, --model         Previously trained TIdeS model (".pkl" file)
+-k, --kmer          kmer size for generating sequence features (default = 3)
+-q, --quiet         No console output
+-ov, --overlap      Permit overlapping kmers (see --kmer)
+-gz, --gzip         Tar and gzip TIdeS output
+```
+#### Example
+
+```cmd
+python3 tides.py -f example/TBD -n TBD -d TBD -c
+```
+
+### Planned Updates - 05-2023
+- [ ] Add basic EDS for evaluating contamination
+- [ ] Conda and/or PyPi packaging
+- [ ] Prepare basic examples (pORF-calls, contamination, EDS for contamination)
+>>>>>>> 95bc404d4cde8075f610868523a8c00257bd0b46
