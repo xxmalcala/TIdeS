@@ -96,18 +96,12 @@ def collect_args():
         default = 'both', type = str, help = argparse.SUPPRESS)
 
     cntm = parser.add_argument_group('Contamination-Calling Options', description = (
-    '''--contam (-c)         evalute ORFs for contamination (may be discontinued)\n'''
-    '''--sister-table        table of sequences annotated as target or contamination\n\n'''))
+    '''--contam (-c)         table of sequences annotated as target or non-target\n'''))
 
-    cntm.add_argument('--contam','-c', action = 'store_true',
+
+    cntm.add_argument('--contam','-c', action = 'store',
+        metavar = '[Contam Table]', type = str,
         help = argparse.SUPPRESS)
-
-    cntm.add_argument('--sister-table', action = 'store',
-        metavar = '[Sister-Relationship Table]', type = str,
-        help = argparse.SUPPRESS)
-
-
-
 
     # Ensures that just script description provided if no arguments provided
     if len(sys.argv[1:]) == 0:
@@ -244,7 +238,7 @@ def predict_orfs(fasta_file: str,
 
 def eval_contam(fasta_file: str,
                 taxon_code: str,
-                sister_summary: str,
+                contam_list: str,
                 gcode: str = '1',
                 pretrained: str = None,
                 min_len: int = 300,
@@ -277,7 +271,7 @@ def eval_contam(fasta_file: str,
 
     tg_seqs, ntg_seqs = ft.prep_contam(fasta_file,
                                         taxon_code,
-                                        sister_summary,
+                                        contam_list,
                                         pretrained,
                                         sttime,
                                         verb)
@@ -368,7 +362,7 @@ if __name__ == '__main__':
 
         sttime = eval_contam(args.fin,
                             args.taxon,
-                            args.sister_table,
+                            args.contam,
                             args.gencode,
                             args.model,
                             args.min_orf,

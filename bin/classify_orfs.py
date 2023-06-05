@@ -17,7 +17,7 @@ import optuna
 import sklearn.ensemble
 import sklearn.metrics
 import sklearn.model_selection
-
+import sklearn.naive_bayes
 
 def extract_features(feature_dict: dict, contam: bool, training: bool) -> pd.core.frame.DataFrame:
     feature_df = pd.DataFrame.from_dict(feature_dict, orient = 'index')
@@ -36,19 +36,25 @@ def extract_features(feature_dict: dict, contam: bool, training: bool) -> pd.cor
         return feature_df, y_ref_df
 
 
-def objective(trial, X_train, y_train, threads):
-    rf_params = {
-        'n_estimators': trial.suggest_int('n_estimators', 100, 500, 100),
-        'max_depth': trial.suggest_int('max_depth', 4, 16, 2),
-        'max_features': trial.suggest_categorical('max_features', choices=['sqrt', 'log2']),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 5),
-        'criterion': trial.suggest_categorical('criterion', ['gini', 'entropy']),
-        'n_jobs': int(threads),
-        'oob_score': True,
-        'random_state': 121219
+def objective(trial, X_train, y_train, threads, contam):
+    if contam:
+        mnb_params = {
+            'alpha': trial.suggest_float('alpha', 1e-5, 1.0, log = True)
         }
+        clf = sklearn.naive_bayes.MultinomialNB(**mnb_params)
+    else:
+        rf_params = {
+            'n_estimators': trial.suggest_int('n_estimators', 100, 500, 100),
+            'max_depth': trial.suggest_int('max_depth', 4, 16, 2),
+            'max_features': trial.suggest_categorical('max_features', choices=['sqrt', 'log2']),
+            'min_samples_split': trial.suggest_int('min_samples_split', 2, 5),
+            'criterion': trial.suggest_categorical('criterion', ['gini', 'entropy']),
+            'n_jobs': int(threads),
+            'oob_score': True,
+            'random_state': 121219
+            }
 
-    clf = sklearn.ensemble.RandomForestClassifier(**rf_params)
+        clf = sklearn.ensemble.RandomForestClassifier(**rf_params)
 
     clf_score = sklearn.model_selection.cross_val_score(
                                             clf,
@@ -61,7 +67,7 @@ def objective(trial, X_train, y_train, threads):
     return clf_score
 
 
-def train_rfc(X_ref_df, y_ref_df, threads: int = -1):
+def train_clf(X_ref_df, y_ref_df, threads: int = -1, contam = False):
     X_train, X_test, y_train, y_test = \
         sklearn.model_selection.train_test_split(
                                     X_ref_df,
@@ -72,20 +78,22 @@ def train_rfc(X_ref_df, y_ref_df, threads: int = -1):
 
     optuna.logging.set_verbosity(optuna.logging.INFO)
     study = optuna.create_study(direction = 'maximize')
-    study.optimize(lambda trial: objective(trial, X_train, y_train, threads), n_trials = 50)
+    study.optimize(lambda trial: objective(trial, X_train, y_train, threads, contam), n_trials = 50)
 
     trial = study.best_trial
+    if contam:
+        opt_clf = sklearn.naive_bayes.MultinomialNB(**trial.params)
+    else:
+        opt_clf = sklearn.ensemble.RandomForestClassifier(random_state = 42, **trial.params)
 
-    opt_rfc = sklearn.ensemble.RandomForestClassifier(random_state = 42, **trial.params)
+    opt_clf.fit(X_train, y_train)
 
-    opt_rfc.fit(X_train, y_train)
-
-    return opt_rfc, trial
+    return opt_clf, trial
 
 
-def save_rfc(rfc_model, txn_code: str) -> None:
-    rfc_pkl = f'{txn_code}_TIdeS/{txn_code}.TIdeS.pkl'
-    pickle.dump(rfc_model, open(rfc_pkl, 'wb+'))
+def save_clf(clf_model, txn_code: str) -> None:
+    clf_pkl = f'{txn_code}_TIdeS/{txn_code}.TIdeS.pkl'
+    pickle.dump(clf_model, open(clf_pkl, 'wb+'))
 
 
 def process_predictions(
@@ -167,16 +175,16 @@ def classify_orfs(
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Training TIdeS')
 
         # trained_rfc, finished_trial = train_rfc(X_ref_df, y_ref_df, threads)
-        trained_rfc, finished_trial = train_rfc(X_ref_df, y_ref_df, threads)
+        trained_clf, finished_trial = train_clf(X_ref_df, y_ref_df, threads, contam)
     else:
-        trained_rfc = pickle.load(open(pretrained, 'rb'))
+        trained_clf = pickle.load(open(pretrained, 'rb'))
 
-    save_rfc(trained_rfc, txn_code)
+    save_clf(trained_clf, txn_code)
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Classifying ORFs')
 
-    query_preds = trained_rfc.predict_proba(query_df)
+    query_preds = trained_clf.predict_proba(query_df)
 
     if contam:
         target_seqs, contam_seqs =  process_predictions(txn_code, query_preds, query_df, contam)
