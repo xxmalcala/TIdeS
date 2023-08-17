@@ -36,6 +36,11 @@ conda install -c bioconda -c conda-forge diamond cd-hit barrnap
 conda install biopython pandas scikit-learn optuna
 ```
 
+Clone the repository.
+```
+git clone https://github.com/xxmalcala/TIdeS.git
+```
+
 ### Prepare the reference protein database
 Create a reference protein database for TIdeS (note you can use your own if you choose!).
 This will generate a database from six diverse eukaryotes, representing a broad yet compact database for subsequent ORF-calling.
