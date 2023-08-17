@@ -15,6 +15,27 @@
 
 ## Quick Start
 
+### Installation
+
+Python's pip can be used to install the necessary python version and related packages.
+
+```
+pip install biopython pandas scikit-learn optuna
+```
+
+Followed by downloading the precompiled executables for the remaining dependencies.
+
+Alternatively, you can do this through conda (note this will be updated):
+```
+# Create a new environment for TIdeS
+conda create -n tides-ml
+conda activate tides-ml
+
+# Install the necessary packages
+conda install -c bioconda -c conda-forge diamond cd-hit barrnap
+conda install biopython pandas scikit-learn optuna
+```
+
 ### Prepare the reference protein database
 Create a reference protein database for TIdeS (note you can use your own if you choose!).
 This will generate a database from six diverse eukaryotes, representing a broad yet compact database for subsequent ORF-calling.
