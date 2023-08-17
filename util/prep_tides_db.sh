@@ -6,7 +6,7 @@ curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/149/405/GCF_000149405.2_ASM14940v2
 
 curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/735/GCF_000001735.4_TAIR10.1/GCF_000001735.4_TAIR10.1_protein.faa.gz  --output TIdeS_Prot_DB/arabidopsis.aa.fas.gz
 
-curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/004/985/GCF_000004985.1_V1.0/GCF_000004985.1_V1.0_protein.faa.gz --output TIdeS_Prot_DB/naegleria.aa.fas.gz
+curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/002/725/GCF_000002725.2_ASM272v2/GCF_000002725.2_ASM272v2_protein.faa.gz --output TIdeS_Prot_DB/leishmania.aa.fas.gz
 
 curl ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/203/815/GCF_000203815.1_DFas_2.0/GCF_000203815.1_DFas_2.0_protein.faa.gz --output TIdeS_Prot_DB/cavenderia.aa.fas.gz
 

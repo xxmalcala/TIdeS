@@ -15,8 +15,17 @@
 
 ## Quick Start
 
-### ORF-Calling and Assessment
+### Prepare the reference protein database
+Create a reference protein database for TIdeS (note you can use your own if you choose!).
+This will generate a database from six diverse eukaryotes, representing a broad yet compact database for subsequent ORF-calling.
 
+Note that this database will be prepared from whichever directory you call upon this script. This may be changed in subsequent updates.
+
+```
+TIdes/util/prep_tides_db.sh
+```
+
+### ORF-Calling and Assessment
 **Inputs**
 - FASTA formatted transcriptome assembly
 - Taxon name (e.g., Homo sapiens, Op_me_Hsap)
@@ -28,16 +37,17 @@ python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <prote
 ##### Required Arguments
 ```
 -f, --fin           Input file in FASTA format
--n, --taxon         Taxon-name or PhyloToL taxon-code
+-n, --taxon         Taxon-name
 -d, --db            Protien database (FASTA or DIAMOND format)
 ```
 ##### Optional Arguments
 ```
--p, --threads       Number of CPU threads (default = 1)
+-t, --threads       Number of CPU threads (default = 1)
 -m, --model         Previously trained TIdeS model (".pkl" file)
 -k, --kmer          kmer size for generating sequence features (default = 3)
--q, --quiet         No console output
 -ov, --overlap      Permit overlapping kmers (see --kmer)
+--step              Step-size for overlapping kmers (default is kmer-length/2)
+-q, --quiet         No console output
 -gz, --gzip         Tar and gzip TIdeS output
 ```
 #### Example
@@ -69,7 +79,6 @@ Kmer-size and overlap can have dramatic impact on the inference of target/non-ta
 python3 tides.py -f example/TBD -n TBD -d TBD -c
 ```
 
-### Planned Updates - 05-2023
-- [ ] Add basic EDS for evaluating contamination
+### Planned Updates - 08-2023
 - [ ] Conda and/or PyPi packaging
 - [ ] Prepare basic examples (pORF-calls, contamination, EDS for contamination)

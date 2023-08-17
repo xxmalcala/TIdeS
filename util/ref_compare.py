@@ -5,19 +5,18 @@ import os, sys
 
 def diamond_blast(query_fas, ref_fas, outname) -> str:
     out_tsv = f'{outname}.BLASTX_RefDB.tsv'
-    stringent_tsv = out_tsv.replace('.tsv','.Stringent.tsv')
-    dmnd_cmd_stringent = f'diamond blastx -q {query_fas} -d {ref_fas} -k 1 -o {stringent_tsv} ' \
-                '--very-sensitive -f 6 qseqid sseqid qlen slen ' \
-                'length pident qframe --quiet --query-cover 70 --subject-cover 70'
 
     dmnd_cmd = f'diamond blastx -q {query_fas} -d {ref_fas} -k 1 -o {out_tsv} ' \
                 '--very-sensitive -f 6 qseqid sseqid qlen slen ' \
                 'length pident qframe --quiet'
 
+    dmnd_cmd_stringent = f'{dmnd_cmd} --quiet --query-cover 70 --subject-cover 70'.replace('.tsv','.Stringent.tsv')
+
+
     os.system(dmnd_cmd)
     os.system(dmnd_cmd_stringent)
 
-    return out_tsv, stringent_tsv
+    return out_tsv, out_tsv.replace('.tsv','.Stringent.tsv')
 
 def parse_hits(default_hits, strict_hits, qseqs, outname) -> None:
 
