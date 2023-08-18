@@ -16,7 +16,7 @@ import numpy as np
 
 import sklearn.metrics
 from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier,
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, classification_report
 
