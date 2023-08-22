@@ -484,7 +484,6 @@ if __name__ == '__main__':
         if not args.quiet:
             print(ascii_logo_vsn())
 
-
         sttime = eval_contam(args.fin,
                             args.taxon,
                             args.contam,

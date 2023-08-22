@@ -202,6 +202,7 @@ def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: 
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Training TIdeS')
 
         trained_clf, opt_study, clf_scrs = train_model(train_data, threads)
+
         with open(clf_scr_tsv, 'w+') as w:
             w.write('TIdeS-Classification-Report\n')
             w.write(f'{clf_scrs[0]}\n')
@@ -217,7 +218,8 @@ def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: 
     if not contam:
         eval_names = ['OOF', 'CRF']
     else:
-        eval_names = list(set(train_data[-1]))
+
+        eval_names = trained_clf.classes_
         tmp = '\t'.join([f'Prob-{name}' for name in eval_names])
         contam_header = f'ORF\tEvaluation\t{tmp}\n'
 
