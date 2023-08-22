@@ -274,7 +274,6 @@ def predict_orfs(
     train_data, query_data, cvec = op.kmer_ngram_counts(
                                     ref_orfs,
                                     putative_orfs,
-                                    stop_codons,
                                     taxon_code,
                                     partial,
                                     cvec,
@@ -287,7 +286,7 @@ def predict_orfs(
     if verb:
         print('\n#----------- ORF Classification ------------#')
 
-    clf_summary, clf = co.classify_porfs(
+    clf_summary, clf = co.classify_orfs(
                         taxon_code,
                         sttime,
                         train_data,
@@ -330,11 +329,11 @@ def eval_contam(fasta_file: str,
                 taxon_code: str,
                 contam_list: str,
                 gcode: str = '1',
-                pretrained: str = None,
-                min_len: int = 300,
-                threads: int = 1,
                 kmer: int = 3,
                 overlap = True,
+                step = None,
+                model: str = None,
+                threads: int = 1,
                 verb: bool = True) -> None:
 
     """
@@ -354,56 +353,85 @@ def eval_contam(fasta_file: str,
     Returns current time to track overall runtime
     """
 
+
     sttime = time.time()
+    cvec = clf = None
+    stop_codons, rstop_codons, ttable = oc.gcode_start_stops(gcode)
+
+    if overlap and not step:
+        step = int(kmer/2)
 
     if verb:
         print('#---- Preparing User-Assessed ORF Data -----#')
 
-    contam_calls = ft.prep_contam(fasta_file,
-                                        taxon_code,
-                                        contam_list,
-                                        pretrained,
-                                        sttime,
-                                        verb)
+    train_orfs, query_orfs = ft.prep_contam(
+                                    fasta_file,
+                                    taxon_code,
+                                    contam_list,
+                                    model,
+                                    sttime,
+                                    verb
+                                    )
 
-    print('Under construction, sorry!')
-    sys.exit()
+    if model:
+        with open(model, 'rb') as f:
+            overlap, kmer, step, cvec, clf = pickle.load(f)
 
-    query_orfs, ref_orfs = oc.generate_contam_calls(tg_seqs,
-                                                    ntg_seqs,
-                                                    fasta_file,
-                                                    taxon_code,
-                                                    pretrained,
-                                                    sttime,
-                                                    gcode,
-                                                    kmer,
-                                                    overlap,
-                                                    verb)
+    if verb:
+        if not model:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training and query ORFs for {taxon_code}')
+        else:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing query ORFs for {taxon_code}')
+
+    train_data, query_data, cvec = op.kmer_ngram_counts(
+                                    train_orfs,
+                                    query_orfs,
+                                    taxon_code,
+                                    False,
+                                    cvec,
+                                    True,
+                                    overlap,
+                                    kmer,
+                                    step
+                                    )
+
 
     if verb:
         print('\n#----------- ORF Classification ------------#')
 
-    tg_preds, ntg_preds = co.classify_orfs(taxon_code,
-                                            ref_orfs,
-                                            query_orfs,
-                                            sttime,
-                                            pretrained,
-                                            threads,
-                                            verb,
-                                            True)
+    clf_summary, clf = co.classify_orfs(
+                        taxon_code,
+                        sttime,
+                        train_data,
+                        query_data,
+                        threads,
+                        clf,
+                        True,
+                        verb
+                        )
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
         print(f'[{timedelta(seconds=round(time.time()-sttime))}]  '
                 ' Making FASTA files and storing TIdeS model')
 
-    sp.finalize_outputs(taxon_code,
-                        fasta_file,
-                        ntg_preds,
-                        tg_preds,
-                        gcode,
-                        min_len,
-                        True)
+    sp.save_model(
+        taxon_code,
+        overlap,
+        kmer,
+        step,
+        cvec,
+        clf
+        )
+
+    sp.save_seqs(
+        taxon_code,
+        query_orfs,
+        clf_summary,
+        ttable,
+        True,
+        True
+        )
 
     return sttime
 
@@ -456,18 +484,16 @@ if __name__ == '__main__':
         if not args.quiet:
             print(ascii_logo_vsn())
 
-        print('Oops, currently remodeling! Will release soon!')
-        sys.exit()
 
         sttime = eval_contam(args.fin,
                             args.taxon,
                             args.contam,
                             args.gencode,
-                            args.model,
-                            args.min_orf,
-                            args.threads,
                             args.kmer,
                             args.overlap,
+                            args.step,
+                            args.model,
+                            args.threads,
                             not args.quiet)
 
     if args.gzip:

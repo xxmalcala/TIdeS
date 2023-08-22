@@ -6,7 +6,10 @@ Controls the training and prediction steps for TIdeS.
 Dependencies include: Optuna, Scikit-learn.
 """
 
-import pickle, random, sys, time
+import pickle
+import random
+import sys
+import time
 from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
@@ -56,7 +59,6 @@ def objective_rf(trial, X_features, X_labels, threads):
         'oob_score': True,
         'random_state': random.randint(0,10000)
         }
-
     clf = RandomForestClassifier(**rf_params)
     clf_score = cross_val_score(
                     clf,
@@ -130,30 +132,23 @@ def train_model(train_data, threads):
     return rf_clf, study, (rf_clf_report, dm_clf_report)
 
 
-def parse_qpreds(q_names, q_preds, contam = False):
+def parse_qpreds(q_names, q_preds, eval_names, contam = False):
     summary = defaultdict(list)
-
-    eval = ['OOF', 'CRF']
-
-    if contam:
-        eval = ['Non-Target', 'Target']
 
     for n in range(0, len(q_preds)):
         if contam:
-            summary[q_names[n]].append([
-                                    f'{eval[np.argmax(q_preds[n])]}',
-                                    f'{q_preds[n][0]:.3f}',
-                                    f'{q_preds[n][1]:.3f}'
-                                    ])
+            summary[q_names[n]] += [f'{eval_names[np.argmax(q_preds[n])]}']
+            for i in q_preds[n]:
+                summary[q_names[n]] += [f'{i:.3f}']
+
         else:
             summary[q_names[n].split('.pORF')[0]].append([
                                                     f'{q_names[n].split()[0]}',
                                                     f'{q_names[n]}',
-                                                    f'{eval[np.argmax(q_preds[n])]}',
+                                                    f'{eval_names[np.argmax(q_preds[n])]}',
                                                     f'{q_preds[n][0]:.4f}',
                                                     f'{q_preds[n][1]:.4f}'
                                                     ])
-
     return summary
 
 
@@ -185,7 +180,7 @@ def best_preds(pred_list):
     return preds_to_keep
 
 
-def classify_porfs(taxon_code: str, start_time, train_data, query_data, threads: int = -1, model = None, contam = False, verb = True):
+def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: int = -1, model = None, contam = False, verb = True):
 
     clf_dir = f'{taxon_code}_TIdeS/Classification/'
     clf_tsv = f'{clf_dir}{taxon_code}.TIdeS_Classification.tsv'
@@ -194,7 +189,6 @@ def classify_porfs(taxon_code: str, start_time, train_data, query_data, threads:
     clf_stdy = f'{clf_dir}{taxon_code}.TIdeS.OptunaStudy.pkl'
 
     non_contam_header = 'Transcript\tpORF\tFull-pORF-Name\tEvaluation\tProb-OOF\tProb-CRF\n'
-    contam_header = 'ORF\t\tEvaluation\tProb-Non-Target\tProb-Target\n'
 
     Path(clf_dir).mkdir(exist_ok = True, parents = True)
 
@@ -219,7 +213,15 @@ def classify_porfs(taxon_code: str, start_time, train_data, query_data, threads:
 
     trained_clf_qpreds = trained_clf.predict_proba(query_data[1])
 
-    query_summary = parse_qpreds(query_data[0], trained_clf_qpreds, contam)
+
+    if not contam:
+        eval_names = ['OOF', 'CRF']
+    else:
+        eval_names = list(set(train_data[-1]))
+        tmp = '\t'.join([f'Prob-{name}' for name in eval_names])
+        contam_header = f'ORF\tEvaluation\t{tmp}\n'
+
+    query_summary = parse_qpreds(query_data[0], trained_clf_qpreds, eval_names, contam)
 
     with open(clf_tsv, 'w+') as w:
         if contam:

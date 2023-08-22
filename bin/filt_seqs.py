@@ -165,7 +165,7 @@ def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threa
     return clust_fas
 
 
-def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, pretrained: str, start_time, verb: bool = True) -> dict:
+def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, model: str, start_time, verb: bool = True) -> dict:
 
     """
     Prepares target/non-target sequences from a FASTA formatted file using a user
@@ -196,61 +196,46 @@ def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, pretrained: str
 
     shutil.copy2(fasta_file, backup_dir)
 
-    if pretrained:
-        return None, None
-
     shutil.copy2(sis_smry, backup_dir)
 
     if verb:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Parsing target/non-target assignments')
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Parsing ORF classifications')
 
-    seq_summary = {i.split('\t')[0]:i.rstrip().split('\t')[1].lower() for i in open(sis_smry).readlines()}
+    train_orfs = {i.split('\t')[0]:i.split('\t')[1].rstrip() for i in open(sis_smry).readlines()}
+    contam_seqs = {i:0 for i in list(set(train_orfs.values()))}
+    query_orfs = {}
 
-    if verb:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Saving target/non-target sequences')
-
-    targ_seqs, non_targ_seqs = 0, 0
-    contam_db = {}
-    contam_seqs = []
-
-    # Annotate 'target' and 'non-target' sequences for training
-
+    # Group sequences by user classification
     for i in SeqIO.parse(fasta_file, 'fasta'):
-        try:
-            if seq_summary[i.id] in ['target', 'host', 'positive', '1']:
-                i.id = f'{i.id}_Target'
-                i.description = ''
-                contam_db[i.id] = [1, f'{i.seq.upper()}']
-                targ_seqs += 1
+        if i.id in train_orfs.keys():
+            contam_seqs[train_orfs[i.id]] += 1
+            train_orfs[i.id] = [train_orfs[i.id], f'{i.seq}']
+        else:
+            query_orfs[i.id] = f'{i.seq}'
 
-            else:
-                i.id = f'{i.id}_NonTarget'
-                i.description = ''
-                contam_db[i.id] = [0, f'{i.seq.upper()}']
-                non_targ_seqs += 1
+    if model:
+        return None, query_orfs
 
-            ref_seqs.append(i)
+    for k, v in contam_seqs.items():
+        if v < 50:
+            print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Error: ' \
+                f'Fewer than 50 sequences were labeled as: {k}')
 
-        except KeyError:
-            continue
+            print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Exiting TIdeS: Too few training seqs.\n')
+            # sys.exit()
 
-    SeqIO.write(ref_seqs, eval_seq_fas, 'fasta')
+        elif 50 <= v < 100:
+                print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
+                    f'Fewer than 100 sequences were labeled as: {k}')
 
-    if min([targ_seqs, non_targ_seqs]) < 50:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Error: ' \
-            'Fewer than 50 examples each of target and non-target sequences were assigned.')
+        else:
+            pass
 
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Exiting TIdeS: Too Few Training Seqs.\n')
-        sys.exit()
+    print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Classification summary: ')
+    for k, v in contam_seqs.items():
+            print(f'{" "*11}----- {v} sequences were labeled as: {k}')
 
-    elif 50 <= min([targ_seqs, non_targ_seqs]) < 100:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
-            'Fewer than 100 target and 100 non-target sequences were assigned.')
-
-    else:
-        pass
-
-    return contam_db
+    return train_orfs, query_orfs
 
 
 def prep_dir(new_dir: str) -> None:

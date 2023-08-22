@@ -88,7 +88,7 @@ def randomize_orientation(ref_orf_db: dict, taxon_code: str) -> dict:
     return rnd_ornt
 
 
-def chunk_seq(seq: str, fstop: list, contam: bool, overlap: bool, kmer: int, step: int):
+def chunk_seq(seq: str, contam: bool, overlap: bool, kmer: int, step: int):
     """
     Chunks the sequences into appropriate "words" by kmer-length and with/out
     overlapping kmers with a given step size.
@@ -96,7 +96,6 @@ def chunk_seq(seq: str, fstop: list, contam: bool, overlap: bool, kmer: int, ste
     Parameters
     ----------
     seq:      nucleotide sequence to trim
-    fstop:    list of stop codons in the plus strand orientation
     contam:   training ORFs are for contamination calling
     overlap:  overlapping kmers permitted if True
     kmer:     kmer size (number of nt) to convert sequences into
@@ -104,6 +103,7 @@ def chunk_seq(seq: str, fstop: list, contam: bool, overlap: bool, kmer: int, ste
 
     Returns kmers of the given sequence with/out overlapping (and appropriate steps)
     """
+
     if overlap:
         if not step:
             step = int(kmer/2)
@@ -119,7 +119,7 @@ def gc_stats(kmer_list: list) -> list:
     p1 = p2 = p3 = p3d = pg = ''
 
 
-def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, fstop: list, taxon_code: str, partial: bool = False, cvec = None, contam: bool = False, overlap: bool = False, kmer: int = 3, step = None):
+def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: str, partial: bool = False, cvec = None, contam: bool = False, overlap: bool = False, kmer: int = 3, step = None):
     """
     Generates the training and query arrays for subsequent classification.
 
@@ -127,7 +127,6 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, fstop: list,
     ----------
     train_orfs_dict:  dictionary of training ORFs
     query_orfs_dict:  dictionary of all putative ORFs (partials included)
-    fstop:            list of stop codons in the plus strand orientation
     taxon_code:       species/taxon name or abbreviated code
     partial:          evaluate partial ORFs
     cvec:             pretrained CountVectorizer from prior run
@@ -150,12 +149,15 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, fstop: list,
     query_labels, query_seqs = [],[]
 
     for k, v in query_orfs_dict.items():
-        if not partial:
-            if 'orf_type:complete' in k:
-                query_seqs.append(chunk_seq(v, fstop, contam, overlap, kmer, step))
+        if not contam:
+            if not partial and 'orf_type:complete' in k:
+                    query_seqs.append(chunk_seq(v, contam, overlap, kmer, step))
+                    query_labels.append(k)
+            else:
+                query_seqs.append(chunk_seq(v, contam, overlap, kmer, step))
                 query_labels.append(k)
         else:
-            query_seqs.append(chunk_seq(v, fstop, contam, overlap, kmer, step))
+            query_seqs.append(chunk_seq(v, contam, overlap, kmer, step))
             query_labels.append(k)
 
     if cvec:
@@ -166,7 +168,7 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, fstop: list,
         train_orfs_dict = randomize_orientation(train_orfs_dict, taxon_code)
 
     for k, v in train_orfs_dict.items():
-        train_seqs.append(chunk_seq(v[1], fstop, contam, overlap, kmer, step))
+        train_seqs.append(chunk_seq(v[1], contam, overlap, kmer, step))
         train_labels.append(k)
         train_class.append(v[0])
 
