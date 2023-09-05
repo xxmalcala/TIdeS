@@ -109,20 +109,11 @@ def train_model(train_data, threads, contam):
 
     study = optuna.create_study(direction='maximize')
 
-    if contam:
-        study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_trials = 100)
-
-    else:
-        study.optimize(lambda trial: objective_rf(trial, X_features, X_labels, threads), n_trials = 50)
-
+    study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_trials = 100)
 
     opt_trial = study.best_trial
 
-    if contam:
-        opt_clf = SVC(probability = True, random_state = random.randint(0,10000), **opt_trial.params)
-
-    else:
-        opt_clf = RandomForestClassifier(random_state = random.randint(0,10000), **opt_trial.params)
+    opt_clf = SVC(probability = True, random_state = random.randint(0,10000), **opt_trial.params)
 
     dm_clf = DummyClassifier(strategy = "stratified", random_state = random.randint(0,10000))
 
