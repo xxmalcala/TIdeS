@@ -79,15 +79,14 @@ python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <prote
 #### Example
 
 ```cmd
-python3 tides.py -f example/TBD -n TBD -d TBD
+python3 tides.py -f examples/Phaeodactylum.transcripts.fasta -n Ptri_test -d tides_aa_db.dmnd
 ```
 
 ### Decontamination
-**Note that these options are currently being streamlined/changed...**
 **Inputs**
 - FASTA formatted transcriptome assembly
-- Taxon name (e.g., Myrionecta rubrum, Sr_ci_Mrub)
-- Table of sequence names annotated as 'target' or 'non-target'
+- Taxon/project name (e.g., Myrionecta rubrum, Kleptoplasty)
+- Table of annotated sequence names (see examples folder)
 ```
 python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --contam <annotated-seqs-table>
 ```
@@ -106,4 +105,3 @@ python3 tides.py -f examples/Mesodinium.Cryptophyte.fasta -n Kleptoplasty -c exa
 
 ### Planned Updates - 08-2023
 - [ ] Conda and/or PyPi packaging
-- [ ] Prepare basic examples (pORF-calls, contamination, EDS for contamination)
