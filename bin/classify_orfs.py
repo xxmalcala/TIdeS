@@ -60,7 +60,6 @@ def train_model(train_data, threads, contam):
     study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_trials = 100)
 
     opt_trial = study.best_trial
-    print(opt_trial.params)
 
     opt_clf = SVC(probability = True, random_state = random.randint(0,10000), **opt_trial.params)
 
