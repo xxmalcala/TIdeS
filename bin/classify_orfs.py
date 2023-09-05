@@ -17,62 +17,10 @@ from pathlib import Path
 import optuna
 import numpy as np
 
-import sklearn.metrics
 from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import accuracy_score, precision_score, classification_report
-
-
-
-def objective_rf(trial, X_features, X_labels, threads):
-    """
-    Controls the training of the Random Forest Classifier
-
-    Parameters
-    ----------
-    trial:       Optuna trial
-    X_features:  array of features for training
-    X_labels:    array of labels for training
-    threads:     number of threads to use for training
-
-    Returns
-    ----------
-    clf_score:  average accuracy score from the model training
-    """
-
-    train_x, test_x, train_y, test_y = train_test_split(
-                                        X_features,
-                                        X_labels,
-                                        shuffle = True,
-                                        test_size = 0.25,
-                                        random_state = random.randint(0,10000),
-                                        stratify = X_labels
-                                        )
-    rf_params = {
-        'n_estimators': trial.suggest_int('n_estimators', 100, 500, 100),
-        'max_depth': trial.suggest_int('max_depth', 2, 12),
-        'max_features': trial.suggest_categorical('max_features', choices=['sqrt', 'log2']),
-        'min_samples_split': trial.suggest_int('min_samples_split', 2, 5),
-        'criterion': trial.suggest_categorical('criterion', ['gini', 'entropy']),
-        'n_jobs': int(threads),
-        'oob_score': True,
-        'random_state': random.randint(0,10000)
-        }
-
-    clf = RandomForestClassifier(**rf_params)
-
-    clf_score = cross_val_score(
-                    clf,
-                    train_x,
-                    train_y,
-                    n_jobs = threads,
-                    cv = 5
-                    ).mean()
-
-    return clf_score
-
+from sklearn.metrics import classification_report
 
 def objective_svm(trial, X_features, X_labels, threads):
     train_x, test_x, train_y, test_y = train_test_split(
@@ -85,7 +33,7 @@ def objective_svm(trial, X_features, X_labels, threads):
                                         )
     params = {
         'C': trial.suggest_float('C', 1e-8, 10),
-        'kernel': trial.suggest_categorical('kernel', choices=['poly','rbf','sigmoid']),
+        'kernel': 'rbf',
         'random_state': random.randint(0,10000)
         }
 
@@ -112,6 +60,7 @@ def train_model(train_data, threads, contam):
     study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_trials = 100)
 
     opt_trial = study.best_trial
+    print(opt_trial.params)
 
     opt_clf = SVC(probability = True, random_state = random.randint(0,10000), **opt_trial.params)
 
