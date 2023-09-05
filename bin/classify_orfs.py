@@ -20,6 +20,7 @@ import numpy as np
 import sklearn.metrics
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, classification_report
 
@@ -83,8 +84,8 @@ def objective_svm(trial, X_features, X_labels, threads):
                                         stratify = X_labels
                                         )
     params = {
-        'C': trial.suggest_float('C', 1e-4, 1),
-        'kernel': 'rbf',
+        'C': trial.suggest_float('C', 1e-8, 10),
+        'kernel': trial.suggest_categorical('kernel', choices=['poly','rbf','sigmoid']),
         'random_state': random.randint(0,10000)
         }
 
@@ -100,7 +101,7 @@ def objective_svm(trial, X_features, X_labels, threads):
     return clf_score
 
 
-def train_model(train_data, threads):
+def train_model(train_data, threads, contam):
     X_features, X_labels = train_data[1:]
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -108,10 +109,21 @@ def train_model(train_data, threads):
 
     study = optuna.create_study(direction='maximize')
 
-    study.optimize(lambda trial: objective_rf(trial, X_features, X_labels, threads), n_trials = 50)
-    rf_trial = study.best_trial
+    if contam:
+        study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_trials = 100)
 
-    rf_clf = RandomForestClassifier(random_state = random.randint(0,10000), **rf_trial.params)
+    else:
+        study.optimize(lambda trial: objective_rf(trial, X_features, X_labels, threads), n_trials = 50)
+
+
+    opt_trial = study.best_trial
+
+    if contam:
+        opt_clf = SVC(probability = True, random_state = random.randint(0,10000), **opt_trial.params)
+
+    else:
+        opt_clf = RandomForestClassifier(random_state = random.randint(0,10000), **opt_trial.params)
+
     dm_clf = DummyClassifier(strategy = "stratified", random_state = random.randint(0,10000))
 
     train_x, test_x, train_y, test_y = train_test_split(
@@ -123,16 +135,16 @@ def train_model(train_data, threads):
                                         stratify = X_labels
                                         )
 
-    rf_clf.fit(train_x, train_y)
+    opt_clf.fit(train_x, train_y)
     dm_clf.fit(train_x, train_y)
 
-    rf_preds = rf_clf.predict(test_x)
+    opt_preds = opt_clf.predict(test_x)
     dm_preds = dm_clf.predict(test_x)
 
-    rf_clf_report = classification_report(test_y, rf_preds)
+    opt_clf_report = classification_report(test_y, opt_preds)
     dm_clf_report = classification_report(test_y, dm_preds)
 
-    return rf_clf, study, (rf_clf_report, dm_clf_report)
+    return opt_clf, study, (opt_clf_report, dm_clf_report)
 
 
 def parse_qpreds(q_names, q_preds, eval_names, contam = False):
@@ -204,7 +216,7 @@ def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: 
         if verb:
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Training TIdeS')
 
-        trained_clf, opt_study, clf_scrs = train_model(train_data, threads)
+        trained_clf, opt_study, clf_scrs = train_model(train_data, threads, contam)
 
         with open(clf_scr_tsv, 'w+') as w:
             w.write('TIdeS-Classification-Report\n')
