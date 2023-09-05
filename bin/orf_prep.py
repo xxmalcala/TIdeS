@@ -16,7 +16,6 @@ from Bio.SeqUtils import GC
 from Bio.SeqRecord import SeqRecord
 
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.preprocessing import RobustScaler
 
 
 def trim_seq(seq: str, rf: int) -> str:
@@ -162,7 +161,7 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: 
 
     if cvec:
         X_query_orfs = np.array([i/sum(i) for i in cvec.transform(query_seqs).toarray()])
-        return None, (query_labels, query_seqs), cvec
+        return None, (query_labels, X_query_orfs), cvec
 
     if not contam:
         train_orfs_dict = randomize_orientation(train_orfs_dict, taxon_code)
@@ -173,14 +172,10 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: 
         train_class.append(v[0])
 
     cvec = CountVectorizer(ngram_range = (1,1))
-    rscaler = RobustScaler(quantile_range = (25, 75))
 
-    query_norm = np.array([i/sum(i) for i in cvec.fit_transform(query_seqs).toarray()])
-    train_norm = np.array([i/sum(i) for i in cvec.transform(train_seqs).toarray()])
+    X_query_orfs = np.array([i/sum(i) for i in cvec.fit_transform(query_seqs).toarray()])
+    X_train_orfs = np.array([i/sum(i) for i in cvec.transform(train_seqs).toarray()])
 
     # Add GC, GC1, GC2, GC3, GC3-Degen? --> see gc_stats(kmer_list)
-
-    X_query_orfs = rscaler.fit_transform(query_norm)
-    X_train_orfs = rscaler.transform(train_norm)
 
     return (train_labels, X_train_orfs, train_class), (query_labels, X_query_orfs), cvec

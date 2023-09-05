@@ -59,7 +59,9 @@ def objective_rf(trial, X_features, X_labels, threads):
         'oob_score': True,
         'random_state': random.randint(0,10000)
         }
+
     clf = RandomForestClassifier(**rf_params)
+
     clf_score = cross_val_score(
                     clf,
                     train_x,
@@ -108,6 +110,7 @@ def train_model(train_data, threads):
 
     study.optimize(lambda trial: objective_rf(trial, X_features, X_labels, threads), n_trials = 50)
     rf_trial = study.best_trial
+
     rf_clf = RandomForestClassifier(random_state = random.randint(0,10000), **rf_trial.params)
     dm_clf = DummyClassifier(strategy = "stratified", random_state = random.randint(0,10000))
 
@@ -238,9 +241,9 @@ def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: 
                 for i in v:
                     x = '\t'.join(i)
                     w.write(f'{k}\t{x}\n')
-
-    with open(clf_stdy, 'wb') as fout:
-        pickle.dump(opt_study, fout)
+    if not model:
+        with open(clf_stdy, 'wb') as fout:
+            pickle.dump(opt_study, fout)
 
     if not contam:
         query_best_preds = {}
