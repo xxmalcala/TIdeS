@@ -188,6 +188,7 @@ def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, model: str, sta
 
     backup_dir = f'{taxon_code}_TIdeS/Original/'
     eval_seq_fas = f'{backup_dir}{taxon_code}.EvalSeqs.fas'
+    query_orfs = {}
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Backing up data for {taxon_code}')
@@ -196,22 +197,26 @@ def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, model: str, sta
 
     shutil.copy2(fasta_file, backup_dir)
 
-    shutil.copy2(sis_smry, backup_dir)
+    if not model:
+        shutil.copy2(sis_smry, backup_dir)
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Parsing ORF classifications')
 
-    train_orfs = {i.split('\t')[0]:i.split('\t')[1].rstrip() for i in open(sis_smry).readlines()}
-    contam_seqs = {i:0 for i in list(set(train_orfs.values()))}
-    query_orfs = {}
+    if not model:
+        train_orfs = {i.split('\t')[0]:i.split('\t')[1].rstrip() for i in open(sis_smry).readlines()}
+        contam_seqs = {i:0 for i in list(set(train_orfs.values()))}
 
     # Group sequences by user classification
     for i in SeqIO.parse(fasta_file, 'fasta'):
-        if i.id in train_orfs.keys():
-            contam_seqs[train_orfs[i.id]] += 1
-            train_orfs[i.id] = [train_orfs[i.id], f'{i.seq}']
-        else:
+        if model:
             query_orfs[i.id] = f'{i.seq}'
+        else:
+            if i.id in train_orfs.keys():
+                contam_seqs[train_orfs[i.id]] += 1
+                train_orfs[i.id] = [train_orfs[i.id], f'{i.seq}']
+            else:
+                query_orfs[i.id] = f'{i.seq}'
 
     if model:
         return None, query_orfs

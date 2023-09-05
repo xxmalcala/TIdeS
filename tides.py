@@ -120,11 +120,9 @@ def collect_args():
         default = 'both', type = str, help = argparse.SUPPRESS)
 
     cntm = parser.add_argument_group('Contamination-Calling Options', description = (
-    '''--contam (-c)         table of sequences annotated as target or non-target\n'''))
+    '''--contam (-c)         table of annotated sequences\n'''))
 
-
-    cntm.add_argument('--contam','-c', action = 'store',
-        metavar = '[Contam Table]', type = str,
+    cntm.add_argument('--contam','-c', nargs = '?', const = True,
         help = argparse.SUPPRESS)
 
     # Ensures that just script description provided if no arguments provided
@@ -365,13 +363,13 @@ def eval_contam(fasta_file: str,
         print('#---- Preparing User-Assessed ORF Data -----#')
 
     train_orfs, query_orfs = ft.prep_contam(
-                                    fasta_file,
-                                    taxon_code,
-                                    contam_list,
-                                    model,
-                                    sttime,
-                                    verb
-                                    )
+                                fasta_file,
+                                taxon_code,
+                                contam_list,
+                                model,
+                                sttime,
+                                verb
+                                )
 
     if model:
         with open(model, 'rb') as f:
@@ -412,7 +410,7 @@ def eval_contam(fasta_file: str,
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
-        print(f'[{timedelta(seconds=round(time.time()-sttime))}]  '
+        print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
                 ' Making FASTA files and storing TIdeS model')
 
     sp.save_model(
@@ -481,6 +479,8 @@ if __name__ == '__main__':
                                 args.strand,
                                 not args.quiet)
     else:
+        # print(args)
+        # sys.exit()
         if not args.quiet:
             print(ascii_logo_vsn())
 
