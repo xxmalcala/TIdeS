@@ -89,20 +89,19 @@ python3 tides.py -f example/TBD -n TBD -d TBD
 - Taxon name (e.g., Myrionecta rubrum, Sr_ci_Mrub)
 - Table of sequence names annotated as 'target' or 'non-target'
 ```
-python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --db <protein-database>
+python3 tides.py --fin <transcriptome-assembly> --taxon <taxon-name> --contam <annotated-seqs-table>
 ```
-Kmer-size and overlap can have dramatic impact on the inference of target/non-target sequences. For contaminated taxa with highly similar composition (e.g. Monocystis agilis [parasite] and Helobdella robusta [host]), recommended to include ```-k 4 -ov``` in the command.
 
 ##### Required Arguments
 ```
 -f, --fin           Input file in FASTA format
--n, --taxon         Taxon-name or PhyloToL taxon-code
--c, --contam        Table of sequences annotated as 'target' or 'non-target'
+-n, --taxon         Taxon or project name
+-c, --contam        Table of annotated sequences
 ```
 #### Example
 
 ```cmd
-python3 tides.py -f example/TBD -n TBD -d TBD -c
+python3 tides.py -f examples/Mesodinium.Cryptophyte.fasta -n Kleptoplasty -c examples/Mesodinium.Cryptophyte.txt
 ```
 
 ### Planned Updates - 08-2023
