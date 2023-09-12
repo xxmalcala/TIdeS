@@ -242,6 +242,7 @@ def predict_orfs(
                                     sttime,
                                     gcode,
                                     min_len,
+                                    partial,
                                     strand,
                                     verb
                                     )

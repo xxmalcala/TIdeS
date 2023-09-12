@@ -527,7 +527,7 @@ def generate_ref_orfs(fasta_file: str, taxon_code: str, start_time, dmnd_db: str
     return ref_orf_db
 
 
-def capture_pORFs(fasta_file: str, taxon_code: str, start_time, gcode: int = 1, min_len: int = 300, stranded = None, verb = True):
+def capture_pORFs(fasta_file: str, taxon_code: str, start_time, gcode: int = 1, min_len: int = 300, partial: bool = False, stranded: str = None, verb: bool = True):
     """
     Manages the capture of all putative ORFs from all transcripts in a given
     FASTA file.
@@ -571,7 +571,10 @@ def capture_pORFs(fasta_file: str, taxon_code: str, start_time, gcode: int = 1, 
                         stranded)
         if seq_porfs:
             for i in seq_porfs.values():
+                if not partial and 'orf_type:complete' not in i[0]:
+                    continue
                 all_pORFs.append(SeqRecord(Seq(i[1]), i[0].split()[0], '', i[0]))
+
                 pORF_db[i[0]] = i[1]
 
     SeqIO.write(all_pORFs, porf_fasta, 'fasta')
