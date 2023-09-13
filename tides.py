@@ -40,6 +40,7 @@ def collect_args():
     '''--kmer (-k)           kmer size for generating sequence features (default = 3)\n'''
     '''--overlap (-ov)       permit overlapping kmers (see --kmer)\n'''
     '''--step                step-size for overlapping kmers (default is kmer-length/2)\n'''
+    '''--clean               remove intermediate filter-step files\n'''
     '''--quiet (-q)          no console output\n'''
     '''--gzip (-gz)          tar and gzip TIdeS output\n'''
     '''--help (-h)           show this help message and exit'''))
@@ -71,6 +72,9 @@ def collect_args():
 
     g.add_argument('--step', action = 'store',
         type = int, default = None,
+        help = argparse.SUPPRESS)
+
+    g.add_argument('--clean', action = 'store_true',
         help = argparse.SUPPRESS)
 
     g.add_argument('--quiet','-q', action = 'store_true',
@@ -495,6 +499,9 @@ if __name__ == '__main__':
                             args.model,
                             args.threads,
                             not args.quiet)
+
+    if args.clean:
+        os.system(f'rm -rf {args.taxon}_TIdeS/Filter_Steps/')
 
     if args.gzip:
         if not args.quiet:

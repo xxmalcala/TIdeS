@@ -221,17 +221,22 @@ def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, model: str, sta
     if model:
         return None, query_orfs
 
+    if len(contam_seqs) < 2:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Error: ' \
+            f'Missing at least TWO categories to run TIdeS')
+        sys.exit(1)
+
     for k, v in contam_seqs.items():
-        if v < 50:
+        if v < 25:
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Error: ' \
-                f'Fewer than 50 sequences were labeled as: {k}')
+                f'Fewer than 25 sequences were labeled as: {k}')
 
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Exiting TIdeS: Too few training seqs.\n')
-            # sys.exit()
+            sys.exit(1)
 
-        elif 50 <= v < 100:
-                print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
-                    f'Fewer than 100 sequences were labeled as: {k}')
+        elif 25 <= v < 100:
+            print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Warning: ' \
+                f'Fewer than 100 sequences were labeled as: {k}')
 
         else:
             pass

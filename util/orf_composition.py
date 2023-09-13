@@ -10,21 +10,24 @@ Returns a table of GC1, GC2, GC3, GC12, and GC3 at four-fold degenerate sites.
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 
 
 def eval_gcode(gencode: str) -> list:
     supp_codes = {
-        '1':['TGA','TAG','TAA'], '6':['TGA'], '10':['TAG','TAA']
+        '1':['TGA','TAG','TAA'], '4':['TAG','TAA'], '6':['TGA'], '10':['TAG','TAA'], '12':['TGA','TAG','TAA'],
+        '29':['TGA'], '30':['TGA']
     }
     if gencode in supp_codes:
         return supp_codes[gencode]
     else:
         print('Error: Unsupported Genetic Code Provided.')
         print('For stop-codon recognition, the only supported codes are:')
-        print('--- 1  [TGA, TAG, TAA]')
-        print('--- 6  [TGA]')
-        print('--- 10 [TAG, TAA]')
+        print('--- 1, 12      [TGA, TAG, TAA]')
+        print('--- 6, 29, 30  [TGA]')
+        print('--- 4, 10      [TAG, TAA]')
         sys.exit()
 
 
@@ -33,7 +36,7 @@ def calc_gc_content(gc_val: str) -> str:
 
 
 def calc_gc_stats(seq: str, stop_codons: list) -> list:
-    gc_stats = {'GC1':[''], 'GC2':[''], 'GC3':[''], 'GC12':[''], 'GC3_DGN':['']}
+    gc_stats = {'GC1':[], 'GC2':[], 'GC3':[], 'GC12':[], 'GC3_DGN':[]}
     gc1 = ''
     gc2 = ''
     gc3 = ''
@@ -41,22 +44,23 @@ def calc_gc_stats(seq: str, stop_codons: list) -> list:
     gc3_dgn = ''
     degenerate_codons = ['TC','CT','CC','CG','AC','GT','GC','GG']
     for n in range(0, len(seq), 3):
-        if seq[n:n+3] not in stop_codons:
-            gc_stats['GC1'][0] += seq[n]
-            gc_stats['GC2'][0] += seq[n+1]
-            gc_stats['GC3'][0] += seq[n+2]
-            gc_stats['GC12'][0] += seq[n:n+2]
+        if seq[n:n+3] not in stop_codons and len(seq[n:n+3]) == 3:
+            gc_stats['GC1'] += seq[n]
+            gc_stats['GC2'] += seq[n+1]
+            gc_stats['GC3'] += seq[n+2]
+            gc_stats['GC12'] += seq[n:n+2]
             if seq[n:n+2] in degenerate_codons:
-                gc_stats['GC3_DGN'][0] += seq[n+2]
+                gc_stats['GC3_DGN'] += seq[n+2]
     for k, v in gc_stats.items():
-        gc_stats[k] = calc_gc_content(v[0])
+        gc_stats[k] = calc_gc_content(''.join(v))
     gc_stats['Seq_Length'] = len(seq)
     return gc_stats
 
 
 def parse_fasta_file(fasta_file: str, gencode: str) -> dict:
     seq_comp_dict = {}
-    out_tsv = f'ORF_Composition/{fasta_file.rpartition(".fa")[0]}.CompSummary.tsv'
+    Path('ORF_Composition/').mkdir(exist_ok = True)
+    out_tsv = f'ORF_Composition/{fasta_file.rpartition("/")[-1].rpartition(".fa")[0]}.CompSummary.tsv'
 
     stop_codons = eval_gcode(gencode)
 
@@ -68,6 +72,26 @@ def parse_fasta_file(fasta_file: str, gencode: str) -> dict:
     df = pd.DataFrame.from_dict(seq_comp_dict, orient = 'index')
     df.index.name = 'ORF'
     df.to_csv(out_tsv, sep = '\t')
+    return out_tsv
+
+
+def make_plots(fasta_file, gencode) -> None:
+    df = pd.read_table(parse_fasta_file(fasta_file, gencode))
+    # print(df['GC3'])
+    # sys.exit()
+    out_png = f'ORF_Composition/{fasta_file.rpartition("/")[-1].rpartition(".fa")[0]}.ORF_Comp.png'
+    if 'Group' in df.columns:
+        ax = sns.jointplot(data = df, x = 'GC3', y = 'GC12', kind = 'kde', hue = 'Group')
+    else:
+        ax = sns.jointplot(data = df, x = 'GC3', y = 'GC12', kind = 'kde')
+
+    ax.ax_marg_x.set_xlim(0, 105)
+    ax.ax_marg_y.set_ylim(0, 105)
+    plt.xlabel('GC3 (%GC at codon 3rd positions)')
+    plt.ylabel('GC12 (%GC at codon 1/2nd positions)')
+    plt.tight_layout()
+    ax.savefig(out_png)
+    plt.clf()
 
 if __name__ == '__main__':
     if len(sys.argv[1:]) == 2:
@@ -77,9 +101,10 @@ if __name__ == '__main__':
         fasta_file = sys.argv[1]
         gcode = 1
     else:
-        print('Usage:\n    python3 orf_composition.py [FASTA-FILE] [GENETIC-CODE [1, 6, 10]]\n')
+        print('Usage:\n    python3 orf_composition.py [FASTA-FILE] [GENETIC-CODE [1, 4, 6, 10, 12, 29, 30]]\n')
         sys.exit()
 
     Path('ORF_Composition').mkdir(exist_ok = True)
 
-    parse_fasta_file(fasta_file, f'{gcode}')
+    # parse_fasta_file(fasta_file, f'{gcode}')
+    make_plots(fasta_file, f'{gcode}')
