@@ -42,7 +42,7 @@ def filt_len(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, max_l
         if min_len <= len(seq_rec.seq) <= max_len:
             t_cnt += 1
 
-            updated_seq_name = f'{taxon_code}_XX_Transcript_{t_cnt}_Len_{len(seq_rec.seq)}'
+            updated_seq_name = f'{taxon_code}|Transcript_{t_cnt}_Len_{len(seq_rec.seq)}'
 
             if 'cov' in seq_rec.id:
                 cov_val = float(seq_rec.id.split("cov_")[1].split("_")[0])
@@ -86,7 +86,7 @@ def run_barrnap(fasta_file: str, threads: int) -> list:
                         universal_newlines=True
                         )
 
-        rRNA_seqs += [i.split('\t')[0] for i in bnp_rslt.stdout.split('\n') if '_XX_' in i]
+        rRNA_seqs += [i.split('\t')[0] for i in bnp_rslt.stdout.split('\n') if '|' in i]
 
     return rRNA_seqs
 
