@@ -69,30 +69,30 @@ Several example command lines and uses for TIdeS (i.e., ORF-calling and ORF clas
 |`-s`, `--strand <STRING>`  | Strands to call ORFs (both/minus/plus). Default value is `both`. |
 |`-c`, `--contam <STRING>`  | Path to annotated sequence table. If unset, TIdeS will assume a prior model is provided as well. |
 | `m`, `--model <STRING>`  | Path to a prior TIdeS run's model. These are the ".pkl" files. |
-|`-k`, `--kmer <INTEGER>`   kmer length to use. Default value is `3`. |
+|`-k`, `--kmer <INTEGER>`  | kmer length to use. Default value is `3`. |
 |`-ov`, `--overlap`  | Permit overlapping kmers. |
 |`--step <INTEGER>`  | Step-size for overlapping kmers. Default value is `kmer-length/2`. | 
 |`--clean`  | Remove intermediate filter-step files. |
 |`-gz`, `--gzip`  | Compress TIdeS outputs when finished. | 
 
-### Prepare the reference protein database
+## ORF-Calling and Assessment
+### Reference protein database
 Create a reference protein database for TIdeS (note you can use your own if you choose!).
 This will generate a database from six diverse eukaryotes, representing a broad yet compact database for subsequent ORF-calling.
 
-Note that this database will be prepared from whichever directory you call upon this script.
+Note that this database (```tides_aa_db.dmnd```) will be prepared from whichever directory you call upon this script.
 
 ```
 ./TIdes/util/prep_tides_db.sh
 ```
 
-## ORF-Calling and Assessment
 **Inputs**
 - FASTA formatted transcriptome assembly
 - Taxon name (e.g., Homo sapiens, Op_me_Hsap)
 - Protein database (can be prepared by "prep_tides_db.sh" in the **util** folder)
 
 ```
-python3 tides.py -f examples/Durinskia_baltica.Example.Contam.fasta --taxon Durinskia_baltica -d tides_aa_db.dmnd
+python3 tides.py -f <transcriptome-assembly> -n <taxon-name> -d <protein-database>
 ```
 
 ## Decontamination
@@ -118,6 +118,8 @@ seq5  lunch
 
 ## Additional uses/approaches
 More on how to run TIdeS and its uses can be found in the ```examples``` folder, including:
++ ORF-Calling
++ Classification of ORFs
 + ORF-calling and sequence classifying with a previously trained model
 + Preparing a simple proteome database and ORF-calling
 + Naive approaches to inferring contamination
