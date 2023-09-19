@@ -14,7 +14,6 @@ Overall, TIdeS couples sequence composition with ML approaches to discern pORFs 
 + [DIAMOND](https://github.com/bbuchfink/diamond)
 + [CD-HIT](https://github.com/weizhongli/cdhit)
 + [Barrnap](https://github.com/tseemann/barrnap)
-+ Patience!
 
 ## Installation
 Note that TIdeS is only supported on UNIX systems (linux and MacOS).
