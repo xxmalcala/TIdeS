@@ -10,6 +10,9 @@ Returns a table of GC1, GC2, GC3, GC12, and GC3 at four-fold degenerate sites.
 import sys
 from pathlib import Path
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
