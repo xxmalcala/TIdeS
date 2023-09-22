@@ -6,14 +6,14 @@ Overall, TIdeS couples sequence composition with ML approaches to discern pORFs 
 
 ## Dependencies
 + [Python 3.7+](https://www.python.org/downloads/)
-  - [BioPython](https://biopython.org/wiki/Download)
-  - [Pandas](https://pandas.pydata.org/)
-  - [scikit-learn](https://scikit-learn.org/stable/)
-  - [Optuna](https://optuna.org/#installation)
-  - [seaborn](https://seaborn.pydata.org/installing.html)
-+ [DIAMOND](https://github.com/bbuchfink/diamond)
-+ [CD-HIT](https://github.com/weizhongli/cdhit)
-+ [Barrnap](https://github.com/tseemann/barrnap)
+  - [BioPython 1.79+](https://biopython.org/wiki/Download)
+  - [Pandas 2.0.3+](https://pandas.pydata.org/)
+  - [scikit-learn 1.3.1+](https://scikit-learn.org/stable/)
+  - [Optuna 3.3.0+](https://optuna.org/#installation)
+  - [seaborn 0.12.2+](https://seaborn.pydata.org/installing.html)
++ [DIAMOND 2.0.13+](https://github.com/bbuchfink/diamond)
++ [CD-HIT 4.8.1+](https://github.com/weizhongli/cdhit)
++ [Barrnap 0.9](https://github.com/tseemann/barrnap)
 
 ## Installation
 Note that TIdeS is only supported on UNIX systems (linux and MacOS).
@@ -32,9 +32,9 @@ Alternatively, you can do this through conda (note this will be updated):
 conda create -n tides-ml
 conda activate tides-ml
 
-# Install the necessary packages
-conda install -c bioconda -c conda-forge diamond cd-hit barrnap
-conda install biopython pandas scikit-learn optuna seaborn
+# Install the necessary packages (with minimum support versions)
+conda install -c bioconda -c conda-forge diamond">=2.0.13" cd-hit">=4.8.1" barrnap">=0.9"
+conda install biopython">=1.79" pandas">=2.0.3" scikit-learn">=1.3.1" optuna">=3.3.0" seaborn">=0.12.2"
 ```
 
 Clone the repository.
