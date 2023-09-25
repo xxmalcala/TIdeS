@@ -8,7 +8,7 @@ Overall, TIdeS couples sequence composition with ML approaches to discern pORFs 
 + [Python 3.7+](https://www.python.org/downloads/)
   - [BioPython 1.79+](https://biopython.org/wiki/Download)
   - [Pandas 2.0.3+](https://pandas.pydata.org/)
-  - [scikit-learn 1.3.1+](https://scikit-learn.org/stable/)
+  - [scikit-learn 1.3+](https://scikit-learn.org/stable/)
   - [Optuna 3.3.0+](https://optuna.org/#installation)
   - [seaborn 0.12.2+](https://seaborn.pydata.org/installing.html)
 + [DIAMOND 2.0.13+](https://github.com/bbuchfink/diamond)
