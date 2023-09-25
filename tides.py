@@ -17,8 +17,6 @@ or replicates of the same taxon.
 import argparse, glob, os, pickle, shutil, sys, time
 from datetime import timedelta
 
-from Bio import SeqIO
-
 from bin import filt_seqs as ft
 from bin import orf_call as oc
 from bin import orf_prep as op
@@ -165,6 +163,34 @@ def detail_msg():
 def usage_msg():
     return """Usage:\n    tides.py [options] --fin [FASTA file] --taxon [taxon name]"""
 
+
+def check_dependencies():
+    dpnds = [('BioPython', 'Bio.SeqIO'), ('Optuna', 'optuna'),
+        ('Pandas', 'pandas'), ('Scikit-Learn', 'sklearn.svm'),
+        ('Barrnap', 'barrnap'), ('CD-HIT', 'cd-hit-est'), ('DIAMOND', 'diamond')]
+
+    dpnd_status = {}
+    for n in range(7):
+        if n < 4:
+            try:
+                __import__(dpnds[n][1])
+                dpnd_status[dpnds[n][0]] = 'Check'
+            except:
+                dpnd_status[dpnds[n][0]] = 'Error'
+        else:
+            if shutil.which(dpnds[n][1]):
+                dpnd_status[dpnds[n][0]] = 'Check'
+            else:
+                dpnd_status[dpnds[n][0]] = 'Error'
+    if 'Error' in dpnd_status.values():
+        print('Error: Status of all dependencies:')
+        for k, v in dpnd_status.items():
+            print(f'    {k}:  {v}')
+        sys.exit()
+
+
+def check_files(file):
+    pass
 
 def predict_orfs(
         fasta_file: str,
