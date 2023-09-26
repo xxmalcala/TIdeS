@@ -32,7 +32,7 @@ def collect_args():
 
     g = parser.add_argument_group('General Options', description = (
     '''--fin (-f)            input file in FASTA format\n'''
-    '''--taxon (-n)          taxon-name\n'''
+    '''--taxon (-n)          taxon or output name\n'''
     '''--threads (-t)        number of CPU threads (default = 1)\n'''
     '''--model (-m)          previously trained TIdeS model (".pkl" file)\n'''
     '''--kmer (-k)           kmer size for generating sequence features (default = 3)\n'''
@@ -46,11 +46,11 @@ def collect_args():
     g.add_argument('--help', '-h', action="help", help=argparse.SUPPRESS)
 
     g.add_argument('--fin', '-f', action = 'store',
-        metavar = ('[FASTA File]'), type = str, required = True,
+        metavar = ('[FASTA File]'), type = str,
         help = argparse.SUPPRESS)
 
     g.add_argument('--taxon','-n', nargs='+',
-        action = 'store', metavar = '[Taxon]', type = str, required = True,
+        action = 'store', metavar = '[Taxon]', type = str,
         help = argparse.SUPPRESS)
 
     g.add_argument('--threads','-t', action = 'store',
@@ -79,6 +79,9 @@ def collect_args():
         help = argparse.SUPPRESS)
 
     g.add_argument('--gzip','-gz', action = 'store_true',
+        help = argparse.SUPPRESS)
+
+    g.add_argument('--version', action = 'store_true',
         help = argparse.SUPPRESS)
 
     porf = parser.add_argument_group('ORF-Calling Options', description = (
@@ -135,6 +138,14 @@ def collect_args():
         sys.exit()
 
     args = parser.parse_args()
+
+    if args.version:
+        print(ascii_logo_vsn())
+        sys.exit()
+    elif not args.taxon or not args.fin:
+        print('\nMissing required inputs: FASTA-File and Output Name')
+        print(f'\n{usage_msg()}\n')
+        sys.exit()
 
     args.taxon = '_'.join(args.taxon)
 
