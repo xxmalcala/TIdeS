@@ -1,0 +1,8 @@
+# Quick means to prepare the conda environment before
+# I eventually make a complete conda package
+
+# required bioconda recipes 
+diamond >=2.0
+barrnap >=0.9
+cd-hit >=4.8
+
