@@ -16,6 +16,7 @@ or replicates of the same taxon.
 
 import argparse, glob, os, pickle, shutil, sys, time
 from datetime import timedelta
+from pathlib import Path
 
 from bin import filt_seqs as ft
 from bin import orf_call as oc
@@ -31,12 +32,14 @@ def collect_args():
             formatter_class=argparse.RawDescriptionHelpFormatter)
 
     g = parser.add_argument_group('General Options', description = (
-    '''--fin (-f)            input file in FASTA format\n'''
-    '''--taxon (-n)          taxon or output name\n'''
+    '''--fin (-i)            input file in FASTA format\n'''
+    '''--taxon (-o)          taxon or output name\n'''
     '''--threads (-t)        number of CPU threads (default = 1)\n'''
+    '''--kraken (-k)         kraken2 database to identify and filter non-eukaryotic sequences\n'''
+    '''--no-filter           skip the rRNA and transcript clustering steps\n'''
     '''--model (-m)          previously trained TIdeS model (".pkl" file)\n'''
-    '''--kmer (-k)           kmer size for generating sequence features (default = 3)\n'''
-    '''--overlap (-ov)       permit overlapping kmers (see --kmer)\n'''
+    '''--kmer                kmer size for generating sequence features (default = 3)\n'''
+    '''--overlap             permit overlapping kmers (see --kmer)\n'''
     '''--step                step-size for overlapping kmers (default is kmer-length/2)\n'''
     '''--clean               remove intermediate filter-step files\n'''
     '''--quiet (-q)          no console output\n'''
@@ -45,11 +48,11 @@ def collect_args():
 
     g.add_argument('--help', '-h', action="help", help=argparse.SUPPRESS)
 
-    g.add_argument('--fin', '-f', action = 'store',
+    g.add_argument('--fin', '-i', action = 'store',
         metavar = ('[FASTA File]'), type = str,
         help = argparse.SUPPRESS)
 
-    g.add_argument('--taxon','-n', nargs='+',
+    g.add_argument('--taxon','-o', nargs='+',
         action = 'store', metavar = '[Taxon]', type = str,
         help = argparse.SUPPRESS)
 
@@ -57,15 +60,22 @@ def collect_args():
         default = 1, metavar = '[Threads]', type = int,
         help = argparse.SUPPRESS)
 
+    g.add_argument('--kraken','-k', action = 'store',
+        metavar = '[Kraken2 Database]', type = str, default = None,
+        help = argparse.SUPPRESS)
+
+    g.add_argument('--no-filter', action = 'store_true',
+        help = argparse.SUPPRESS)
+
     g.add_argument('--model','-m', action = 'store',
         metavar = '[Trained-RFC]', type = str, default = None,
         help = argparse.SUPPRESS)
 
-    g.add_argument('--kmer','-k', action = 'store',
+    g.add_argument('--kmer', action = 'store',
         default = 3, metavar = '[kmer]', type = int,
         help = argparse.SUPPRESS)
 
-    g.add_argument('--overlap','-ov', action = 'store_true',
+    g.add_argument('--overlap', action = 'store_true',
         help = argparse.SUPPRESS)
 
     g.add_argument('--step', action = 'store',
@@ -91,10 +101,10 @@ def collect_args():
     '''--min-orf (-l)        minimum ORF length (bp) to evaluate (default = 300)\n'''
     '''--max-orf (-ml)       maximum ORF length (bp) to evaluate (default = 10000)\n'''
     '''--evalue (-e)         maximum e-value to infer reference ORFs (default = 1e-30)\n'''
-    '''--gencode (-gc)       genetic code to use to translate ORFs\n'''
+    '''--gencode (-g)        genetic code to use to translate ORFs\n'''
     '''--strand (-s)         query strands to call ORFs (both/minus/plus, default = both)'''))
 
-    porf.add_argument('--db','-d', action = 'store',
+    porf.add_argument('--db', '-d', action = 'store',
         metavar = '[Protein Database]', type = str,
         help = argparse.SUPPRESS)
 
@@ -105,19 +115,20 @@ def collect_args():
         default = 97, metavar = '[perc-identity]', type = int,
         help = argparse.SUPPRESS)
 
-    porf.add_argument('--min-orf','-l', action = 'store',
+    porf.add_argument('--min-orf', '-l', action = 'store',
         default = 300, metavar = '[bp]', type = int,
         help = argparse.SUPPRESS)
 
-    porf.add_argument('--max-orf','-ml', action = 'store',
+    porf.add_argument('--max-orf', '-ml', action = 'store',
         default = 10000, metavar = '[bp]', type = int,
         help = argparse.SUPPRESS)
 
-    porf.add_argument('--evalue','-e', action = 'store',
+    porf.add_argument('--evalue', '-e', action = 'store',
         default = 1e-30, metavar = '[e-value]', type = float,
+
         help = argparse.SUPPRESS)
 
-    porf.add_argument('--gencode','-gc', action = 'store',
+    porf.add_argument('--gencode', '-g', action = 'store',
         default = '1', metavar = '[Genetic-Code]', type = str,
         help = argparse.SUPPRESS)
 
@@ -142,6 +153,7 @@ def collect_args():
     if args.version:
         print(ascii_logo_vsn())
         sys.exit()
+
     elif not args.taxon or not args.fin:
         print('\nMissing required inputs: FASTA-File and Output Name')
         print(f'\n{usage_msg()}\n')
@@ -158,7 +170,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.0.0
+     Version 1.0.4
     """
     return alv_msg
 
@@ -176,9 +188,10 @@ def usage_msg():
 
 
 def check_dependencies():
-    dpnds = [('BioPython', 'Bio.SeqIO'), ('Optuna', 'optuna'),
-        ('Pandas', 'pandas'), ('Scikit-Learn', 'sklearn.svm'),
-        ('Barrnap', 'barrnap'), ('CD-HIT', 'cd-hit-est'), ('DIAMOND', 'diamond')]
+    dpnds = [
+        ('BioPython', 'Bio.SeqIO'), ('Optuna', 'optuna'), ('Pandas', 'pandas'),
+        ('Scikit-Learn', 'sklearn.svm'), ('Barrnap', 'barrnap'),
+        ('CD-HIT', 'cd-hit-est'), ('DIAMOND', 'diamond'), ('Kraken2', 'kraken2')]
 
     dpnd_status = {}
     for n in range(7):
@@ -200,27 +213,25 @@ def check_dependencies():
         sys.exit()
 
 
-def check_files(file):
-    pass
-
 def predict_orfs(
         fasta_file: str,
         taxon_code:str,
         dmnd_db: str,
-        partial: bool = False,
-        gcode: str = '1',
-        kmer: int = 3,
-        overlap: bool = False,
-        step = None,
-        model = None,
-        min_len: int = 300,
-        max_len: int = 10000,
-        pid: float = 0.97,
-        evalue: float = 1e-30,
-        threads: int = 1,
-        strand:str = 'both',
-        verb: bool = True
-        ) -> None:
+        kraken_db: str,
+        partial: bool,
+        filter: bool,
+        gcode: str,
+        kmer: int,
+        overlap: bool,
+        step: int,
+        model: str,
+        min_len: int,
+        max_len: int,
+        pid: float,
+        evalue: float,
+        threads: int,
+        strand: str,
+        verb: bool) -> None:
 
     """
     Predicts in-frame Open Reading Frames (ORFs) from a given transcriptome.
@@ -264,12 +275,15 @@ def predict_orfs(
                     fasta_file,
                     taxon_code,
                     sttime,
+                    kraken_db,
+                    filter,
                     min_len,
                     max_len,
                     threads,
                     pid,
                     verb
                     )
+
 
     if verb:
         if not model:
@@ -368,13 +382,14 @@ def predict_orfs(
 def eval_contam(fasta_file: str,
                 taxon_code: str,
                 contam_list: str,
-                gcode: str = '1',
-                kmer: int = 3,
-                overlap = True,
-                step = None,
-                model: str = None,
-                threads: int = 1,
-                verb: bool = True) -> None:
+                kraken_db: list,
+                gcode: str,
+                kmer: int,
+                overlap: bool,
+                step: int,
+                model: str,
+                threads: int,
+                verb: bool) -> None:
 
     """
     Binary classification of target versus non-target sequences
@@ -408,8 +423,10 @@ def eval_contam(fasta_file: str,
                                 fasta_file,
                                 taxon_code,
                                 contam_list,
+                                kraken_db,
                                 model,
                                 sttime,
+                                threads,
                                 verb
                                 )
 
@@ -507,7 +524,9 @@ if __name__ == '__main__':
         sttime = predict_orfs(args.fin,
                                 args.taxon,
                                 args.db,
+                                args.kraken,
                                 args.partial,
+                                args.no_filter,
                                 args.gencode,
                                 args.kmer,
                                 args.overlap,
@@ -526,9 +545,21 @@ if __name__ == '__main__':
         if not args.quiet:
             print(ascii_logo_vsn())
 
+        if not isinstance(args.contam, str) and not args.kraken:
+            print('ERROR: Please include the path to a file of annotated sequences to classify OR\n' \
+                'the path to a suitable Kraken2 database for automatic annotation of\n' \
+                'non-eukaryotic sequences.\n')
+            sys.exit(1)
+
+        elif isinstance(args.contam, str) and not args.kraken and not Path(args.contam).is_file():
+            print(f'Could not find the file {args.contam}. Please check that the correct\n' \
+                'path is provided.\n')
+            sys.exit(1)
+
         sttime = eval_contam(args.fin,
                             args.taxon,
                             args.contam,
+                            args.kraken,
                             args.gencode,
                             args.kmer,
                             args.overlap,

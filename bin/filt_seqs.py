@@ -10,11 +10,12 @@ as Foraminifera, will need to have their rRNAs removed independently.
 Dependencies include: Barrnap, BioPython, CD-HIT.
 """
 
-import shutil, subprocess, sys, time
+import numpy, random, shutil, subprocess, sys, time
 from datetime import timedelta
 from pathlib import Path
 
 from Bio import SeqIO
+from ete3 import NCBITaxa
 
 
 def filt_len(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, max_len: int) -> str:
@@ -34,27 +35,34 @@ def filt_len(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, max_l
     """
 
     filt_len_fasta = f'{out_dir}/{taxon_code}.{min_len}bp.fas'
+    filt_len_conv_tbl = f'{out_dir}/{taxon_code}.{min_len}bp.NameConversion.tsv'
 
     t_cnt = 0
     updated_seqs = []
+    name_convert = []
 
-    for seq_rec in SeqIO.parse(fasta_file, 'fasta'):
-        if min_len <= len(seq_rec.seq) <= max_len:
+    for i in SeqIO.parse(fasta_file, 'fasta'):
+        if min_len <= len(i.seq) <= max_len:
             t_cnt += 1
 
-            updated_seq_name = f'{taxon_code}|Transcript_{t_cnt}_Len_{len(seq_rec.seq)}'
+            updated_seq_name = f'{taxon_code}|Transcript_{t_cnt}_Len_{len(i.seq)}'
 
-            if 'cov' in seq_rec.id:
-                cov_val = float(seq_rec.id.split("cov_")[1].split("_")[0])
+            if 'cov' in i.id:
+                cov_val = float(i.id.split("cov_")[1].split("_")[0])
                 updated_seq_name += f'_Cov_{cov_val:.2f}'
 
-            seq_rec.id = updated_seq_name
-            seq_rec.description = ''
-            seq_rec.seq = seq_rec.seq.upper()
+            name_convert.append(f'{updated_seq_name}\t{i.description}\n')
+            i.id = updated_seq_name
+            i.description = ''
+            i.seq = i.seq.upper()
 
-            updated_seqs.append(seq_rec)
+            updated_seqs.append(i)
 
     SeqIO.write(updated_seqs, filt_len_fasta, 'fasta')
+
+    with open(filt_len_conv_tbl,'w+') as w:
+        w.write('Updated-Name\tOriginal-Name\n')
+        w.write(''.join(name_convert))
 
     return filt_len_fasta
 
@@ -128,6 +136,186 @@ def remove_rRNA(fasta_file: str, taxon_code: str, out_dir: str, min_len: int, th
     return rRNA_clean_fas
 
 
+def run_kraken2(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: str, threads: int) -> str:
+    """
+    Run Kraken2 to identify putative non-eukaryotic contamination
+
+    Parameters
+    ----------
+    fasta_file:  FASTA formatted file
+    taxon_code:  species/taxon name or abbreviated code
+    out_dir:     output directory to store Kraken2's classification reports
+    kraken_db:   path to kraken2-database directory
+    threads:     number of cpu threads to use
+
+    Returns
+    ----------
+    krak_out:   kraken2 taxonomic assignment report
+    """
+
+    krak_out = f'{out_dir}{taxon_code}.Kraken2_Txnmy.txt'
+
+    krak_cmd = 'kraken2 --confidence 0.1 ' \
+                f'--db {kraken_db} ' \
+                f'--threads {threads} ' \
+                f'--output {krak_out} ' \
+                f'{fasta_file}'
+
+    krak_rslt = subprocess.run(
+                    krak_cmd.split(),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True
+                    )
+
+    return krak_out
+
+
+def assign_taxonomy(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: str, threads: int) -> dict:
+    """
+    Runs Kraken2 and assigns taxonomy to the classified sequences.
+
+    Parameters
+    ----------
+    fasta_file:  FASTA formatted file
+    taxon_code:  species/taxon name or abbreviated code
+    out_dir:     output directory to store Kraken2's classification reports
+    kraken_db:   path to kraken2-database directory
+    threads:     number of cpu threads to use
+
+    Returns
+    ----------
+    krak_seq_txnmy: dictionary of sequences and their broad classification
+    """
+
+    kraken_output = run_kraken2(fasta_file, taxon_code, out_dir, kraken_db, threads)
+
+    krak_seq_txnmy = {}
+
+    ncbi = NCBITaxa()
+
+    if not Path(f'{Path.home()}/.etetoolkit/taxa.sqlite').is_file():
+        ncbi.update_taxonomy_database()
+
+    with open(kraken_output, 'r') as fi:
+        for ln in fi:
+            if ln[0] == 'C':
+                taxid = ln.split('\t')[2]
+                txnmy = ncbi.get_taxid_translator(ncbi.get_lineage(taxid))
+
+                if 'Bacteria' in txnmy.values():
+                    krak_seq_txnmy[ln.split('\t')[1]] = 'Bacteria'
+
+                elif 'Archaea' in txnmy.values():
+                    krak_seq_txnmy[ln.split('\t')[1]] = 'Archaea'
+
+                elif 'Viruses' in txnmy.values():
+                    krak_seq_txnmy[ln.split('\t')[1]] = 'Virus'
+
+                else:
+                    krak_seq_txnmy[ln.split('\t')[1]] = 'PutativeEuk'
+
+            else:
+                krak_seq_txnmy[ln.split('\t')[1]] = 'PutativeEuk'
+
+    return krak_seq_txnmy
+
+
+def kraken_contam_eval(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: str, threads: int) -> str:
+    """
+    Takes the taxonomic assignments to identify sequences for training TIdeS
+
+    Parameters
+    ----------
+    fasta_file:  FASTA formatted file
+    taxon_code:  species/taxon name or abbreviated code
+    out_dir:     output directory to store Kraken2's classification reports and
+                 sequence classification table
+    kraken_db:   path to kraken2-database directory
+    threads:     number of cpu threads to use
+
+    Returns
+    ----------
+    seq_eval_summary: table of annotated sequences for training
+    """
+
+
+    seq_eval_summary = f'{out_dir}{taxon_code}.KrakenEval.TIdeS.txt'
+
+    krak_seq_txnmy = assign_taxonomy(fasta_file, taxon_code, out_dir, kraken_db, threads)
+
+    euk_seqs = []
+    non_euk_seqs = []
+    for k, v in krak_seq_txnmy.items():
+        if v != 'PutativeEuk':
+            non_euk_seqs.append(f'{k}\tNon-Eukaryotic\n')
+        else:
+            euk_seqs.append(f'{k}\t{taxon_code}\n')
+
+    random.shuffle(non_euk_seqs)
+    random.shuffle(euk_seqs)
+
+    fin_data = non_euk_seqs[:min([len(non_euk_seqs), len(euk_seqs), 200])]
+    fin_data += euk_seqs[:min([len(non_euk_seqs), len(euk_seqs), 200])]
+
+    if not fin_data:
+        print(f' ----- No sequences were annotated as "non-eukaryotic"')
+        print(f' ----- Quitting TIdeS')
+        sys.exit(1)
+
+    with open(seq_eval_summary, 'w+') as w:
+        w.write(''.join(fin_data))
+
+    return seq_eval_summary
+
+
+def remove_non_euk(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: str, threads: int) -> str:
+    """
+    Remove putative non-eukaryotic contamination from FASTA file
+
+    Parameters
+    ----------
+    fasta_file:  FASTA formatted file
+    taxon_code:  species/taxon name or abbreviated code
+    out_dir:     output directory to store annotated sequences (euk and non-euk)
+    kraken_db:   path to kraken2-database directory
+    threads:     number of cpu threads to use
+
+    Returns
+    ----------
+    peuk_fasta': FASTA formatted file of putative eukaryotic transcripts
+    """
+
+    peuk_fasta = f'{out_dir}{taxon_code}.Kraken_Txnmy.PutativeEuk.fasta'
+
+    krak_seq_txnmy = assign_taxonomy(fasta_file, taxon_code, out_dir, kraken_db, threads)
+
+    non_euk_seqs = {'Bacterial':[],'Virus':[], 'Archaea':[]}
+    peuk_seqs = []
+
+    for i in SeqIO.parse(fasta_file,'fasta'):
+        if i.id not in krak_seq_txnmy.items():
+            peuk_seqs.append(i)
+        else:
+            if krak_seq_txnmy[i.id] == 'PutativeEuk':
+                peuk_seqs.append(i)
+            else:
+                non_euk_seqs[krak_seq_txnmy[i.id]].append(i)
+
+    for k, v in non_euk_seqs.items():
+        if v:
+            outf = f'{out_dir}{taxon_code}.Kraken_Txnmy.{k}.fasta'
+            SeqIO.write(v, outf, 'fasta')
+
+    if not peuk_seqs:
+        print(f'ERROR: No putative eukaryotic sequences are present for {taxon_code} from {fasta_file}')
+        sys.exit(1)
+
+    SeqIO.write(peuk_seqs, peuk_fasta, 'fasta')
+
+    return peuk_fasta
+
+
 def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threads: int) -> str:
     """
     Remove redundant sequences using a given minium percent identity
@@ -165,7 +353,7 @@ def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threa
     return clust_fas
 
 
-def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, model: str, start_time, verb: bool = True) -> dict:
+def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, kraken_db: str, model: str, start_time, threads: int, verb: bool) -> dict:
 
     """
     Prepares target/non-target sequences from a FASTA formatted file using a user
@@ -198,7 +386,13 @@ def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, model: str, sta
     shutil.copy2(fasta_file, backup_dir)
 
     if not model:
-        shutil.copy2(sis_smry, backup_dir)
+        if kraken_db:
+            if verb:
+                print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Classifying ORFs with Kraken2')
+
+            sis_smry = kraken_contam_eval(fasta_file, taxon_code, backup_dir, kraken_db, threads)
+        else:
+            shutil.copy2(sis_smry, backup_dir)
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Parsing ORF classifications')
@@ -228,6 +422,7 @@ def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, model: str, sta
 
     for k, v in contam_seqs.items():
         if v < 25:
+            print(contam_seqs)
             print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Error: ' \
                 f'Fewer than 25 sequences were labeled as: {k}')
 
@@ -260,7 +455,7 @@ def prep_dir(new_dir: str) -> None:
     Path(new_dir).mkdir(parents = True, exist_ok = True)
 
 
-def filter_transcripts(fasta_file: str, taxon_code: str, start_time, min_len: int = 300, max_len: int = 10000, threads: int = 4, pid: float = 0.97, verb: bool = True) -> str:
+def filter_transcripts(fasta_file: str, taxon_code: str, start_time, kraken_db: str, skip_filter: bool = False, min_len: int = 300, max_len: int = 10000, threads: int = 4, pid: float = 0.97, verb: bool = True) -> str:
     """
     Performs all the initial filtering steps to ease classification
 
@@ -279,10 +474,10 @@ def filter_transcripts(fasta_file: str, taxon_code: str, start_time, min_len: in
     post_clst_fas:  FASTA formatted file of filtered transcripts for ORF-calling
     """
 
-
     backup_dir = f'{taxon_code}_TIdeS/Original/'
     filt_len_dir = f'{taxon_code}_TIdeS/Filter_Steps/Length_Filter/'
     clust_dir = f'{taxon_code}_TIdeS/Filter_Steps/Clustering/'
+    krak_dir = f'{taxon_code}_TIdeS/Filter_Steps/Kraken_Filter/'
     filt_rRNA_dir = f'{taxon_code}_TIdeS/Filter_Steps/rRNA_Filter/'
 
     if verb:
@@ -291,12 +486,14 @@ def filter_transcripts(fasta_file: str, taxon_code: str, start_time, min_len: in
     prep_dir(backup_dir)
     shutil.copy2(fasta_file, backup_dir)
 
+    if skip_filter:
+        return f'{backup_dir}{fasta_file.rpartition("/")[-1]}'
+
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing short transcripts')
 
     prep_dir(filt_len_dir)
     mlen_fas = filt_len(fasta_file, taxon_code, filt_len_dir, min_len, max_len)
-
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing rRNA contamination')
@@ -308,6 +505,14 @@ def filter_transcripts(fasta_file: str, taxon_code: str, start_time, min_len: in
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Filtering redundant transcripts')
 
     prep_dir(clust_dir)
-    post_clst_fas = clust_txps(rRNA_free, taxon_code, clust_dir, pid, threads)
+    post_clst = clust_txps(rRNA_free, taxon_code, clust_dir, pid, threads)
 
-    return post_clst_fas
+    if verb and kraken_db:
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing non-eukarytioc transcripts')
+
+        prep_dir(krak_dir)
+        post_krak = remove_non_euk(post_clst, taxon_code, krak_dir, kraken_db, threads)
+
+        return post_krak
+
+    return post_clst
