@@ -18,11 +18,11 @@ import argparse, glob, os, pickle, shutil, sys, time
 from datetime import timedelta
 from pathlib import Path
 
-from bin import filt_seqs as ft
-from bin import orf_call as oc
-from bin import orf_prep as op
-from bin import classify_orfs as co
-from bin import save_preds as sp
+from tides.bin import filt_seqs as ft
+from tides.bin import orf_call as oc
+from tides.bin import orf_prep as op
+from tides.bin import classify_orfs as co
+from tides.bin import save_preds as sp
 
 
 def collect_args():
@@ -35,18 +35,20 @@ def collect_args():
     '''--fin (-i)            input file in FASTA format\n'''
     '''--taxon (-o)          taxon or output name\n'''
     '''--threads (-t)        number of CPU threads (default = 1)\n'''
-    '''--kraken (-k)         kraken2 database to identify and filter non-eukaryotic sequences\n'''
+    '''--kraken (-k)         kraken2 database to identify and filter\n'''
+    '''                      non-eukaryotic sequences\n'''
     '''--no-filter           skip the rRNA and transcript clustering steps\n'''
     '''--model (-m)          previously trained TIdeS model (".pkl" file)\n'''
     '''--kmer                kmer size for generating sequence features (default = 3)\n'''
     '''--overlap             permit overlapping kmers (see --kmer)\n'''
-    '''--step                step-size for overlapping kmers (default is kmer-length/2)\n'''
+    '''--step                step-size for overlapping kmers\n'''
+    '''                      (default is kmer-length/2)\n'''
     '''--clean               remove intermediate filter-step files\n'''
     '''--quiet (-q)          no console output\n'''
     '''--gzip (-gz)          tar and gzip TIdeS output\n'''
     '''--help (-h)           show this help message and exit'''))
 
-    g.add_argument('--help', '-h', action="help", help=argparse.SUPPRESS)
+    g.add_argument('--help', '-h', action="help", help = argparse.SUPPRESS)
 
     g.add_argument('--fin', '-i', action = 'store',
         metavar = ('[FASTA File]'), type = str,
@@ -97,12 +99,15 @@ def collect_args():
     porf = parser.add_argument_group('ORF-Calling Options', description = (
     '''--db (-d)             protien database (FASTA or DIAMOND format)\n'''
     '''--partial (-p)        evaluate partial ORFs as well\n'''
-    '''--id (-id)            minimum % identity to remove redundant transcripts (default = 97)\n'''
+    '''--id (-id)            minimum % identity to remove redundant transcripts\n'''
+    '''                      (default = 97)\n'''
     '''--min-orf (-l)        minimum ORF length (bp) to evaluate (default = 300)\n'''
     '''--max-orf (-ml)       maximum ORF length (bp) to evaluate (default = 10000)\n'''
-    '''--evalue (-e)         maximum e-value to infer reference ORFs (default = 1e-30)\n'''
+    '''--evalue (-e)         maximum e-value to infer reference ORFs\n'''
+    '''                      (default = 1e-30)\n'''
     '''--gencode (-g)        genetic code to use to translate ORFs\n'''
-    '''--strand (-s)         query strands to call ORFs (both/minus/plus, default = both)'''))
+    '''--strand (-s)         query strands to call ORFs\n'''
+    '''                      (both/minus/plus, default = both)'''))
 
     porf.add_argument('--db', '-d', action = 'store',
         metavar = '[Protein Database]', type = str,
@@ -170,7 +175,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.0.4
+     Version 1.1.2
     """
     return alv_msg
 
@@ -187,15 +192,15 @@ def usage_msg():
     return """Usage:\n    tides.py [options] --fin [FASTA file] --taxon [taxon name]"""
 
 
-def check_dependencies():
+def check_dependencies(args):
     dpnds = [
         ('BioPython', 'Bio.SeqIO'), ('Optuna', 'optuna'), ('Pandas', 'pandas'),
-        ('Scikit-Learn', 'sklearn.svm'), ('Barrnap', 'barrnap'),
+        ('Scikit-Learn', 'sklearn.svm'), ('ete3', 'ete3'), ('Barrnap', 'barrnap'),
         ('CD-HIT', 'cd-hit-est'), ('DIAMOND', 'diamond'), ('Kraken2', 'kraken2')]
 
     dpnd_status = {}
-    for n in range(7):
-        if n < 4:
+    for n in range(9):
+        if n < 5:
             try:
                 __import__(dpnds[n][1])
                 dpnd_status[dpnds[n][0]] = 'Check'
@@ -205,7 +210,18 @@ def check_dependencies():
             if shutil.which(dpnds[n][1]):
                 dpnd_status[dpnds[n][0]] = 'Check'
             else:
-                dpnd_status[dpnds[n][0]] = 'Error'
+                if not args.contam:
+                    if not args.kraken:
+                        if n == 8:
+                            dpnd_status[dpnds[n][0]] = 'Warning'
+                        else:
+                            dpnd_status[dpnds[n][0]] = 'Error'
+                else:
+                    if n == 8 and args.kraken:
+                        dpnd_status[dpnds[n][0]] = 'Error'
+                    else:
+                        dpnd_status[dpnds[n][0]] = 'Warning'
+
     if 'Error' in dpnd_status.values():
         print('Error: Status of all dependencies:')
         for k, v in dpnd_status.items():
@@ -356,9 +372,6 @@ def predict_orfs(
         print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
                 ' Making FASTA files and storing TIdeS model')
 
-    # print(list(putative_orfs.keys())[0])
-    # print(list(clf_summary[1].values())[0][0])
-
     sp.save_model(
         taxon_code,
         overlap,
@@ -492,8 +505,7 @@ def eval_contam(fasta_file: str,
 
     return sttime
 
-
-if __name__ == '__main__':
+def main():
 
     """Note to self:
     Add method to check the sister-summary table format...
@@ -509,6 +521,8 @@ if __name__ == '__main__':
 
     if not oc.gcode_start_stops(args.gencode):
         sys.exit(1)
+
+    check_dependencies(args)
 
     args.pid = args.pid / 100
 
@@ -540,12 +554,11 @@ if __name__ == '__main__':
                                 args.strand,
                                 not args.quiet)
     else:
-        # print(args)
-        # sys.exit()
         if not args.quiet:
             print(ascii_logo_vsn())
 
-        if not isinstance(args.contam, str) and not args.kraken:
+        if not isinstance(args.contam, str) and not args.kraken and not args.model:
+            print(args)
             print('ERROR: Please include the path to a file of annotated sequences to classify OR\n' \
                 'the path to a suitable Kraken2 database for automatic annotation of\n' \
                 'non-eukaryotic sequences.\n')
@@ -569,7 +582,13 @@ if __name__ == '__main__':
                             not args.quiet)
 
     if args.clean:
-        os.system(f'rm -rf {args.taxon}_TIdeS/Filter_Steps/')
+        if not args.quiet:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Removing intermediate files')
+
+        if Path(f'{args.taxon}_TIdeS/Filter_Steps/').exists():
+            os.system(f'rm -rf {args.taxon}_TIdeS/Filter_Steps')
+        if Path(f'{args.taxon}_TIdeS/ORF_Calling/').exists():
+            os.system(f'rm -rf {args.taxon}_TIdeS/ORF_Calling/')
 
     if args.gzip:
         if not args.quiet:

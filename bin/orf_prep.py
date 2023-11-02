@@ -58,27 +58,46 @@ def randomize_orientation(ref_orf_db: dict, taxon_code: str) -> dict:
 
 
     for n in range(0, len(seq_subsamp)):
-        # Keep 50% of the training ORFs in the correct orientation
-        if n < len(seq_subsamp) * 0.5:
-            rnd_seq_name = f'{seq_subsamp[n]}_RF1'
-            rnd_seq = ref_orf_db[seq_subsamp[n]]
-            rnd_ornt[rnd_seq_name] = [1, rnd_seq]
+        ref_seq_name = f'{seq_subsamp[n]}_RF1'
+        ref_seq = ref_orf_db[seq_subsamp[n]]
+
+
+        rf = random.sample([-3,-2,-1, 2, 3], 1)[0]
+        if rf > 0:
+            rnd_seq_name = f'{seq_subsamp[n]}_RF{rf}'
+            rnd_seq = trim_seq(ref_orf_db[seq_subsamp[n]], rf)
 
         else:
-            # Randomly select "incorrect" reading frames
-            rf = random.sample([-3,-2,-1, 2, 3], 1)[0]
+            rnd_seq_name = f'{seq_subsamp[n]}_RF{abs(rf) + 3}'
+            rnd_seq = trim_seq(f'{Seq(ref_orf_db[seq_subsamp[n]]).reverse_complement()}', abs(rf))
 
-            if rf > 0:
-                rnd_seq_name = f'{seq_subsamp[n]}_RF{rf}'
-                rnd_seq = trim_seq(ref_orf_db[seq_subsamp[n]], rf)
+        rnd_ornt[ref_seq_name] = [1, ref_seq]
+        rnd_ornt[rnd_seq_name] = [0, rnd_seq]
 
-            else:
-                rnd_seq_name = f'{seq_subsamp[n]}_RF{abs(rf) + 3}'
-                rnd_seq = trim_seq(f'{Seq(ref_orf_db[seq_subsamp[n]]).reverse_complement()}', abs(rf))
-
-            rnd_ornt[rnd_seq_name] = [0, rnd_seq]
-
+        rnd_ornt_seqs.append(SeqRecord(Seq(ref_seq), ref_seq_name, '',''))
         rnd_ornt_seqs.append(SeqRecord(Seq(rnd_seq), rnd_seq_name, '',''))
+
+        # Keep 50% of the training ORFs in the correct orientation
+        # if n < len(seq_subsamp) * 0.5:
+        #     rnd_seq_name = f'{seq_subsamp[n]}_RF1'
+        #     rnd_seq = ref_orf_db[seq_subsamp[n]]
+        #     rnd_ornt[rnd_seq_name] = [1, rnd_seq]
+        #
+        # else:
+        #     # Randomly select "incorrect" reading frames
+        #     rf = random.sample([-3,-2,-1, 2, 3], 1)[0]
+        #
+        #     if rf > 0:
+        #         rnd_seq_name = f'{seq_subsamp[n]}_RF{rf}'
+        #         rnd_seq = trim_seq(ref_orf_db[seq_subsamp[n]], rf)
+        #
+        #     else:
+        #         rnd_seq_name = f'{seq_subsamp[n]}_RF{abs(rf) + 3}'
+        #         rnd_seq = trim_seq(f'{Seq(ref_orf_db[seq_subsamp[n]]).reverse_complement()}', abs(rf))
+        #
+        #     rnd_ornt[rnd_seq_name] = [0, rnd_seq]
+        #
+        #     rnd_ornt_seqs.append(SeqRecord(Seq(rnd_seq), rnd_seq_name, '',''))
 
     train_fas = f'{taxon_code}_TIdeS/ORF_Calling/{taxon_code}.TrainingORFs.fas'
 

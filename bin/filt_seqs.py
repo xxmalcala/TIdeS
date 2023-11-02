@@ -202,16 +202,12 @@ def assign_taxonomy(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: s
             if ln[0] == 'C':
                 taxid = ln.split('\t')[2]
                 txnmy = ncbi.get_taxid_translator(ncbi.get_lineage(taxid))
-
                 if 'Bacteria' in txnmy.values():
                     krak_seq_txnmy[ln.split('\t')[1]] = 'Bacteria'
-
                 elif 'Archaea' in txnmy.values():
                     krak_seq_txnmy[ln.split('\t')[1]] = 'Archaea'
-
                 elif 'Viruses' in txnmy.values():
                     krak_seq_txnmy[ln.split('\t')[1]] = 'Virus'
-
                 else:
                     krak_seq_txnmy[ln.split('\t')[1]] = 'PutativeEuk'
 
@@ -290,11 +286,11 @@ def remove_non_euk(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: st
 
     krak_seq_txnmy = assign_taxonomy(fasta_file, taxon_code, out_dir, kraken_db, threads)
 
-    non_euk_seqs = {'Bacterial':[],'Virus':[], 'Archaea':[]}
+    non_euk_seqs = {'Bacteria':[],'Viruses':[], 'Archaea':[]}
     peuk_seqs = []
 
     for i in SeqIO.parse(fasta_file,'fasta'):
-        if i.id not in krak_seq_txnmy.items():
+        if i.id not in krak_seq_txnmy:
             peuk_seqs.append(i)
         else:
             if krak_seq_txnmy[i.id] == 'PutativeEuk':
@@ -508,7 +504,7 @@ def filter_transcripts(fasta_file: str, taxon_code: str, start_time, kraken_db: 
     post_clst = clust_txps(rRNA_free, taxon_code, clust_dir, pid, threads)
 
     if verb and kraken_db:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing non-eukarytioc transcripts')
+        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing non-eukaryotic transcripts')
 
         prep_dir(krak_dir)
         post_krak = remove_non_euk(post_clst, taxon_code, krak_dir, kraken_db, threads)
