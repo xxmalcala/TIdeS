@@ -5,7 +5,7 @@ tar -zxvf Durinskia_baltica.Example.Contam.fasta.tar.gz
 tar -zxvf Durinskia_baltica_ORF_Call.TIdeS.pkl.tar.gz
 
 # Classify ORFs from a previously trained model
-python3 ../tides.py -t 1 -m Durinskia_baltica_ORF_Call.TIdeS.pkl \
--f Durinskia_baltica.Example.Contam.fasta \
--n Durinskia_baltica_Call_ORFs
+tides -t 1 -m Durinskia_baltica_ORF_Call.TIdeS.pkl \
+-i Durinskia_baltica.Example.Contam.fasta \
+-o Durinskia_baltica_Call_ORFs
 
