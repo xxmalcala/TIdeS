@@ -5,7 +5,7 @@ tar -zxvf Durinskia_baltica.Example.Contam.fasta.tar.gz
 ../util/prep_tides_db.sh
 
 # Make the initial ORF calls
-python3 ../tides.py -d tides_aa_db.dmnd -t 1 -f Durinskia_baltica.Example.Contam.fasta -n Durinskia_baltica_ORF_Call -gz
+tides -d tides_aa_db.dmnd -t 1 -i Durinskia_baltica.Example.Contam.fasta -o Durinskia_baltica_ORF_Call -gz
 
 # Generate the ORF-Composition plots -- quick way to assess obvious contamination
 python3 ../util/orf_composition.py Durinskia_baltica_ORF_Call_TIdeS/Durinskia_baltica_ORF_Call.TIdeS.fasta
@@ -25,6 +25,6 @@ python3 ../util/seqs_by_composition.py -f Durinskia_baltica_ORF_Call_TIdeS/Durin
 cat Durinskia_baltica_ORF_Call_TIdeS/*.Cluster*txt > Durinskia_baltica.Cluster_Labels.txt
 
 # Train TIdeS to group the sequences into separate clusters
-python3 ../tides.py -t 1 -f Durinskia_baltica_ORF_Call_TIdeS/Durinskia_baltica_ORF_Call.TIdeS.fasta \
--n Durinskia_baltica_Decontam -c Durinskia_baltica.Cluster_Labels.txt -gz
+tides -t 1 -i Durinskia_baltica_ORF_Call_TIdeS/Durinskia_baltica_ORF_Call.TIdeS.fasta \
+-o Durinskia_baltica_Decontam -c Durinskia_baltica.Cluster_Labels.txt -gz
 
