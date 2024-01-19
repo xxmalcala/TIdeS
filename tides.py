@@ -97,7 +97,7 @@ def collect_args():
         help = argparse.SUPPRESS)
 
     porf = parser.add_argument_group('ORF-Calling Options', description = (
-    '''--db (-d)             protien database (FASTA or DIAMOND format)\n'''
+    '''--db (-d)             protein database (FASTA or DIAMOND format)\n'''
     '''--partial (-p)        evaluate partial ORFs as well\n'''
     '''--id (-id)            minimum % identity to remove redundant transcripts\n'''
     '''                      (default = 97)\n'''

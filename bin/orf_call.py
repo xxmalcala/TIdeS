@@ -514,14 +514,14 @@ def generate_ref_orfs(fasta_file: str, taxon_code: str, start_time, dmnd_db: str
     for seq_rec in SeqIO.parse(fasta_file,'fasta'):
         if seq_rec.id in dmnd_hits:
             orf_pos = [int(j) for j in dmnd_hits[seq_rec.id][4:6]]
-            orf = seq_rec.seq[min(orf_pos)-1:max(orf_pos)]
+            orf = f'{seq_rec.seq[min(orf_pos)-1:max(orf_pos)]}'
 
             if orf_pos[0] > orf_pos[1]:
                 ref_orf_db[seq_rec.id] = f'{Seq(orf).reverse_complement()}'
                 ref_orfs.append(SeqRecord(Seq(orf).reverse_complement(),seq_rec.id,'',''))
 
             else:
-                ref_orf_db[seq_rec.id] = f'{orf}'
+                ref_orf_db[seq_rec.id] = orf
                 ref_orfs.append(SeqRecord(Seq(orf),seq_rec.id,'',''))
 
     return ref_orf_db

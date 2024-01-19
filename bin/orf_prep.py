@@ -12,7 +12,6 @@ import numpy as np
 
 from Bio import SeqIO
 from Bio.Seq import Seq
-from Bio.SeqUtils import GC
 from Bio.SeqRecord import SeqRecord
 
 from sklearn.feature_extraction.text import CountVectorizer
@@ -133,10 +132,6 @@ def chunk_seq(seq: str, contam: bool, overlap: bool, kmer: int, step: int):
     return ' '.join(kmer_list)
 
 
-def gc_stats(kmer_list: list) -> list:
-    p1 = p2 = p3 = p3d = pg = ''
-
-
 def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: str, partial: bool = False, cvec = None, contam: bool = False, overlap: bool = False, kmer: int = 3, step = None):
     """
     Generates the training and query arrays for subsequent classification.
@@ -194,7 +189,5 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: 
 
     X_query_orfs = np.array([i/sum(i) for i in cvec.fit_transform(query_seqs).toarray()])
     X_train_orfs = np.array([i/sum(i) for i in cvec.transform(train_seqs).toarray()])
-
-    # Add GC, GC1, GC2, GC3, GC3-Degen? --> see gc_stats(kmer_list)
 
     return (train_labels, X_train_orfs, train_class), (query_labels, X_query_orfs), cvec
