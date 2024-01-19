@@ -5,4 +5,5 @@
 diamond >=2.0
 barrnap >=0.9
 cd-hit >=4.8
+kraken2 >=2.0.0
 

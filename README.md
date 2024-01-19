@@ -5,11 +5,28 @@
 # Installation
 Note that TIdeS is only supported on UNIX systems (linux and MacOS).
 
-## Install with conda (easiest way)
+## Temporary "best" install method (while conda recipe is updated; 18-01-2024)
+
+Follow the installation 'pip-based' install instructions for initial setup.
+
+Donwload TIdeS using git:
+
 ```
-conda create -n tides-ml
-conda activate tides-ml
-conda install -c bioconda tides-ml
+git clone https://github.com/xxmalcala/TIdeS.git
+```
+
+Afterwards, use mamba to install the remaining packages:
+```
+mamba create -n tides-ml
+mamba activate tides-ml
+mamba update --file TIdeS/util/https://github.com/xxmalcala/TIdeS.git
+```
+
+## Install with [mamba](https://mamba.readthedocs.io/en/latest/index.html) (recommended)
+```
+mamba create -n tides-ml
+mamba activate tides-ml
+mamba install -c bioconda tides-ml
 ```
 
 ## Install with pip
