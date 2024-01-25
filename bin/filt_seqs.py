@@ -312,7 +312,7 @@ def remove_non_euk(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: st
     return peuk_fasta
 
 
-def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threads: int) -> str:
+def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, mem: int, threads: int) -> str:
     """
     Remove redundant sequences using a given minium percent identity
 
@@ -322,6 +322,7 @@ def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threa
     taxon_code:  species/taxon name or abbreviated code
     out_dir:     output directory to store clustered transcripts
     pid:         minimum percent identity to cluster redundant sequences
+    mem:         memory limit (MB) for cd-hit (default: 800, unlimited: 0)
     threads:     number of cpu threads to use
 
     Returns
@@ -336,6 +337,7 @@ def clust_txps(fasta_file: str, taxon_code: str, out_dir: str, pid: float, threa
                     f'-c {pid} ' \
                     '-aS 1.0 ' \
                     '-aL .005 ' \
+                    f'-M {int(mem)} ' \
                     f'-i {fasta_file} ' \
                     f'-o {clust_fas}'
 
@@ -451,7 +453,7 @@ def prep_dir(new_dir: str) -> None:
     Path(new_dir).mkdir(parents = True, exist_ok = True)
 
 
-def filter_transcripts(fasta_file: str, taxon_code: str, start_time, kraken_db: str, skip_filter: bool = False, min_len: int = 300, max_len: int = 10000, threads: int = 4, pid: float = 0.97, verb: bool = True) -> str:
+def filter_transcripts(fasta_file: str, taxon_code: str, start_time, kraken_db: str, skip_filter: bool = False, min_len: int = 300, max_len: int = 10000, threads: int = 4, pid: float = 0.97, mem: int = 2000, verb: bool = True) -> str:
     """
     Performs all the initial filtering steps to ease classification
 
@@ -501,7 +503,7 @@ def filter_transcripts(fasta_file: str, taxon_code: str, start_time, kraken_db: 
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Filtering redundant transcripts')
 
     prep_dir(clust_dir)
-    post_clst = clust_txps(rRNA_free, taxon_code, clust_dir, pid, threads)
+    post_clst = clust_txps(rRNA_free, taxon_code, clust_dir, pid, mem, threads)
 
     if verb and kraken_db:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing non-eukaryotic transcripts')

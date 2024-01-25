@@ -101,6 +101,7 @@ def collect_args():
     '''--partial (-p)        evaluate partial ORFs as well\n'''
     '''--id (-id)            minimum % identity to remove redundant transcripts\n'''
     '''                      (default = 97)\n'''
+    '''--memory              memory limit (MB) for CD-HIT (default = 2000, unlimited = 0)\n'''
     '''--min-orf (-l)        minimum ORF length (bp) to evaluate (default = 300)\n'''
     '''--max-orf (-ml)       maximum ORF length (bp) to evaluate (default = 10000)\n'''
     '''--evalue (-e)         maximum e-value to infer reference ORFs\n'''
@@ -113,11 +114,15 @@ def collect_args():
         metavar = '[Protein Database]', type = str,
         help = argparse.SUPPRESS)
 
-    g.add_argument('--partial','-p', action = 'store_true',
+    porf.add_argument('--partial','-p', action = 'store_true',
         help = argparse.SUPPRESS)
 
     porf.add_argument('--pid', '--id', '-id', action = 'store',
         default = 97, metavar = '[perc-identity]', type = int,
+        help = argparse.SUPPRESS)
+
+    porf.add_argument('--memory', action = 'store',
+        default = 2000, metavar = '[memory-limit]', type = int,
         help = argparse.SUPPRESS)
 
     porf.add_argument('--min-orf', '-l', action = 'store',
@@ -244,6 +249,7 @@ def predict_orfs(
         min_len: int,
         max_len: int,
         pid: float,
+        memory: int,
         evalue: float,
         threads: int,
         strand: str,
@@ -266,6 +272,7 @@ def predict_orfs(
     min_len:     minimum ORF length to consider
     max_len:     maximum ORF length to consider
     pid:         percent identity (0-1.0) for removing redundant sequences
+    memory:      memory limit (MB) for CD-HIT
     evalue:      maximum e-value to keep hits from DIAMOND
     threads:     number of threads to use
     strand:      designate strand(s) for ORF calling
@@ -297,6 +304,7 @@ def predict_orfs(
                     max_len,
                     threads,
                     pid,
+                    memory,
                     verb
                     )
 
