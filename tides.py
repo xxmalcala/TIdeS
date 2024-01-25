@@ -180,7 +180,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.1.2
+     Version 1.1.4
     """
     return alv_msg
 
