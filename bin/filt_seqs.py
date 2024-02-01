@@ -453,7 +453,19 @@ def prep_dir(new_dir: str) -> None:
     Path(new_dir).mkdir(parents = True, exist_ok = True)
 
 
-def filter_transcripts(fasta_file: str, taxon_code: str, start_time, kraken_db: str, skip_filter: bool = False, min_len: int = 300, max_len: int = 10000, threads: int = 4, pid: float = 0.97, mem: int = 2000, verb: bool = True) -> str:
+def filter_transcripts(
+                        fasta_file: str,
+                        taxon_code: str,
+                        start_time,
+                        kraken_db: str,
+                        skip_filter: bool = False,
+                        min_len: int = 300,
+                        max_len: int = 10000,
+                        threads: int = 4,
+                        pid: float = 0.97,
+                        mem: int = 2000,
+                        verb: bool = True
+                        ) -> str:
     """
     Performs all the initial filtering steps to ease classification
 
@@ -492,6 +504,7 @@ def filter_transcripts(fasta_file: str, taxon_code: str, start_time, kraken_db: 
 
     prep_dir(filt_len_dir)
     mlen_fas = filt_len(fasta_file, taxon_code, filt_len_dir, min_len, max_len)
+
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Removing rRNA contamination')

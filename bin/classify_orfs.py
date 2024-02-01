@@ -33,8 +33,8 @@ def objective_svm(trial, X_features, X_labels, threads):
                                         )
     params = {
         'C': trial.suggest_float('C', 1e-8, 10),
-        'kernel': 'rbf',
-        'random_state': random.randint(0,10000)
+        'kernel': trial.suggest_categorical('kernel', ['linear', 'rbf']),
+        'random_state': random.randint(0,10000),
         }
 
     clf = SVC(**params)
@@ -42,7 +42,7 @@ def objective_svm(trial, X_features, X_labels, threads):
                     clf,
                     train_x,
                     train_y,
-                    n_jobs = threads,
+                    n_jobs = int(threads),
                     cv = 5
                     ).mean()
 
@@ -57,7 +57,7 @@ def train_model(train_data, threads, contam):
 
     study = optuna.create_study(direction='maximize')
 
-    study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_trials = 100)
+    study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_jobs = int(threads), n_trials = 100)
 
     opt_trial = study.best_trial
 

@@ -14,8 +14,8 @@ trained models to speed up ORF-calling and ORF-classification from similar taxa
 or replicates of the same taxon.
 """
 
-import argparse, glob, os, pickle, shutil, sys, time
-from datetime import timedelta
+import argparse, glob, logging, os, pickle, shutil, sys, time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from tides.bin import filt_seqs as ft
@@ -180,7 +180,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.1.4
+     Version 1.2.0
     """
     return alv_msg
 
@@ -253,7 +253,8 @@ def predict_orfs(
         evalue: float,
         threads: int,
         strand: str,
-        verb: bool) -> None:
+        verb: bool,
+        ) -> None:
 
     """
     Predicts in-frame Open Reading Frames (ORFs) from a given transcriptome.
@@ -285,14 +286,21 @@ def predict_orfs(
     ref_orfs = ref_orf_fas = cvec = clf = None
     stop_codons, rstop_codons, ttable = oc.gcode_start_stops(gcode)
 
-    if overlap and not step:
-        step = int(kmer/2)
+    if model:
+        with open(model, 'rb') as f:
+            overlap, kmer, step, cvec, clf = pickle.load(f)
 
-    """NEED to compress log of options into pickle file too ... then can pass all
-    relevant info to the appropriate functions, like the kmer, overlap, step, blah blah..."""
+    elif overlap and not step:
+        step = int(kmer/2)
 
     if verb:
         print('#------ Preparing Transcriptome Data -------#')
+
+    logging.info(
+        f'\n+---------------------------------+\n'\
+        f'|      Transcript-Filtering       |\n'\
+        f'+---------------------------------+'
+        )
 
     filt_fas = ft.filter_transcripts(
                     fasta_file,
@@ -308,12 +316,23 @@ def predict_orfs(
                     verb
                     )
 
+    orig_seqs = open(fasta_file).read().count('>')
+    sfilt_seqs = open(filt_fas).read().count('>')
+
+    logging.info(f'\nInitial Transcripts:   {orig_seqs}')
+    logging.info(f'Filtered Transcripts:  {sfilt_seqs}')
 
     if verb:
         if not model:
             print('\n#------- Calling Training and pORFs --------#')
         else:
             print('\n#------------- Calling pORFs ---------------#')
+
+    logging.info(
+        f'\n+---------------------------------+\n'\
+        f'|           ORF-Calling           |\n'\
+        f'+---------------------------------+'
+        )
 
     putative_orfs, porf_fas = oc.capture_pORFs(
                                     filt_fas,
@@ -326,6 +345,9 @@ def predict_orfs(
                                     verb
                                     )
 
+    porf_count = len(putative_orfs)
+    logging.info(f'\nPutative ORFs Called:  {porf_count}')
+
     if not model:
         ref_orfs = oc.generate_ref_orfs(
                                     filt_fas,
@@ -337,11 +359,6 @@ def predict_orfs(
                                     threads,
                                     verb
                                     )
-
-
-    if model:
-        with open(model, 'rb') as f:
-            overlap, kmer, step, cvec, clf = pickle.load(f)
 
     if verb:
         if not model:
@@ -375,6 +392,9 @@ def predict_orfs(
                         verb
                         )
 
+    tds_orfs = len(clf_summary[1])
+    logging.info(f'TIdeS ORF Predictions: {tds_orfs}')
+
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
         print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
@@ -396,6 +416,16 @@ def predict_orfs(
         ttable,
         True
         )
+
+    logging.info(
+        f'\n+---------------------------------+\n'\
+        f'|          Main Outputs           |\n'\
+        f'+---------------------------------+'
+        )
+
+    logging.info(f'\nPredicted ORFs:   {taxon_code}_TIdeS/{taxon_code}.TIdeS.fasta')
+    logging.info(f'Trained Model:    {taxon_code}_TIdeS/{taxon_code}.TIdeS.pkl')
+    logging.info(f'Classifications:  {taxon_code}_TIdeS/Classification/{taxon_code}.TIdeS_Classification.tsv')
 
     return sttime
 
@@ -434,7 +464,11 @@ def eval_contam(fasta_file: str,
     cvec = clf = None
     stop_codons, rstop_codons, ttable = oc.gcode_start_stops(gcode)
 
-    if overlap and not step:
+    if model:
+        with open(model, 'rb') as f:
+            overlap, kmer, step, cvec, clf = pickle.load(f)
+
+    elif overlap and not step:
         step = int(kmer/2)
 
     if verb:
@@ -502,16 +536,94 @@ def eval_contam(fasta_file: str,
         clf
         )
 
-    sp.save_seqs(
-        taxon_code,
-        query_orfs,
-        clf_summary,
-        ttable,
-        True,
-        True
+    orf_classes = sp.save_seqs(
+                    taxon_code,
+                    query_orfs,
+                    clf_summary,
+                    ttable,
+                    True,
+                    True
+                    )
+    logging.info(
+        f'\n+---------------------------------+\n'\
+        f'|     Classification Summary      |\n'\
+        f'+---------------------------------+'
         )
 
+    tds_cls_fas = []
+    orig_seqs = open(fasta_file).read().count('>')
+
+    logging.info(f'\nInitial ORFs:       {orig_seqs}')
+
+
+    for k in list(orf_classes):
+        cf = f'{taxon_code}_TIdeS/{taxon_code}.TIdeS.{k}.fasta'
+        cf_cnt = open(cf).read().count('>')
+
+        x = f'{k} ORFs:'.ljust(20)
+
+        logging.info(f'{x}{cf_cnt}')
+
+        tds_cls_fas.append(f'\n     {cf}')
+
+    logging.info(
+        f'\n+---------------------------------+\n'\
+        f'|          Main Outputs           |\n'\
+        f'+---------------------------------+'
+        )
+
+    logging.info(f'Trained Model:        {taxon_code}_TIdeS/{taxon_code}.TIdeS.pkl')
+    logging.info(f'Classifications:      {taxon_code}_TIdeS/Classification/{taxon_code}.TIdeS_Classification.tsv')
+    logging.info(f'Classified ORFs:{"".join(tds_cls_fas)}')
+
     return sttime
+
+
+def init_log_stats(args):
+    if args.model:
+        with open(args.model, 'rb') as f:
+            args.overlap, args.kmer, args.step, args.cvec, args.clf = pickle.load(f)
+
+    arg_vars = vars(args)
+
+    curr_time = datetime.now().strftime("%m/%d/%Y %I:%M %p")
+
+    outdir = f'{arg_vars["taxon"]}_TIdeS/'
+
+    Path(outdir).mkdir(parents = True, exist_ok = True)
+
+    outlog = f'{outdir}/tides.log'
+
+    logging.basicConfig(filename = outlog,
+        filemode = 'w+',
+        format = '%(message)s',
+        level = logging.DEBUG)
+
+    logging.info(
+        f'+---------------------------------+\n'\
+        f'|         TIdeS Parameters        |\n'\
+        f'+---------------------------------+'
+        )
+
+    logging.info(f'\nRun-Start:  {curr_time}')
+
+    if arg_vars['contam']:
+        qparams = ['fin', 'taxon', 'contam', 'threads', 'kraken', 'model', 'kmer', 'overlap', 'step']
+        logging.info(f'Mode:       ORF-Classification')
+
+    else:
+        qparams = ['fin', 'taxon', 'threads', 'kraken', 'no_filter', 'model', 'kmer',
+                    'overlap', 'step', 'db', 'partial', 'pid', 'memory', 'min_orf',
+                    'max_orf', 'evalue', 'gencode', 'strand']
+
+        logging.info(f'\nMode:       ORF-Prediction')
+
+    for k in qparams:
+        x = f'{k}:'.ljust(12)
+        logging.info(f'{x}{str(arg_vars[k] or "None")}')
+
+    return outlog
+
 
 def main():
 
@@ -532,7 +644,10 @@ def main():
 
     check_dependencies(args)
 
-    args.pid = args.pid / 100
+    init_log_stats(args)
+
+    if float(args.pid) > 1:
+        args.pid = args.pid / 100
 
     if not args.contam:
         if not args.db and not args.model:
@@ -557,6 +672,7 @@ def main():
                                 args.min_orf,
                                 args.max_orf,
                                 args.pid,
+                                args.memory,
                                 args.evalue,
                                 args.threads,
                                 args.strand,

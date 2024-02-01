@@ -58,3 +58,4 @@ def save_seqs(taxon_code, all_orfs, clf_summary, gcode, single_best = True, cont
         for k, v in class_seqs.items():
             out_ntd =  f'{taxon_code}_TIdeS/{taxon_code}.TIdeS.{k}.fasta'
             SeqIO.write(v, out_ntd, 'fasta')
+        return class_seqs.keys()
