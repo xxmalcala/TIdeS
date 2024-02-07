@@ -5,23 +5,6 @@
 # Installation
 Note that TIdeS is only supported on UNIX systems (linux and MacOS).
 
-## Temporary "best" install method (while conda recipe is updated; 18-01-2024)
-
-Follow the installation 'pip-based' install instructions for initial setup.
-
-Donwload TIdeS using git:
-
-```
-git clone https://github.com/xxmalcala/TIdeS.git
-```
-
-Afterwards, use mamba to install the remaining packages:
-```
-mamba create -n tides-ml
-mamba activate tides-ml
-mamba update --file TIdeS/util/https://github.com/xxmalcala/TIdeS.git
-```
-
 ## Install with [mamba](https://mamba.readthedocs.io/en/latest/index.html) (recommended)
 ```
 mamba create -n tides-ml
@@ -57,6 +40,7 @@ Alternatively, we provide a bash script to create a database from six diverse eu
 - FASTA formatted transcriptome assembly
 - Taxon name (e.g., Homo sapiens, Op_me_Hsap)
 - Protein database (can be prepared by "prep_tides_db.sh" in the **util** folder)
+- **Note**: examplar commands can be found in the [orf_call_and_decontam.sh](https://github.com/xxmalcala/TIdeS/blob/main/examples/orf_call_and_decontam.sh) script found in the examples folder.
 
 ```
 tides -i <transcriptome-assembly> -o <taxon-name> -d <protein-database>
@@ -74,6 +58,8 @@ tides -i <transcriptome-assembly> -o <taxon-name> -d <protein-database> -g 6
 - FASTA formatted transcriptome assembly
 - Taxon/project name (e.g., Durisnkia baltica, Dinotoms)
 - Table of annotated sequence names (see examples folder) OR path to a formatted [Kraken2 database](https://benlangmead.github.io/aws-indexes/k2)
+- Python scripts for generating composition plots (`orf_composition.py`) and selection of sequences based on composition metrics (`seqs_by_composition.py`) can be found in the **util** folder
+- **Note**: examplar commands can be found in the `orf_call_and_decontam.sh` script found in the examples folder.
 
 Using user-defined table of annotated sequences:
 ```
@@ -100,14 +86,13 @@ seq5  lunch
 ```
 
 # Deploy a previously trained TIdeS model
-### Prior ORF prediction run
+**Inputs**
+- FASTA formatted transcriptome assembly
+- Taxon/project name (e.g., Durisnkia baltica, Dinotoms)
+- Path to a trained TIdeS model ('.pkl' file)
+- **Note**: examplar commands for using a [prior ORF-prediction model](https://github.com/xxmalcala/TIdeS/blob/main/examples/prev_model_orf_call.sh) and [prior ORF classification model](https://github.com/xxmalcala/TIdeS/blob/main/examples/prev_model_decontam.sh) are provided
 ```
 tides -i <transcriptome-assembly> -o <taxon-name> -m <TIdeS.pkl-file>
-```
-
-### Prior ORF classification run
-```
-tides -i <Predicted-ORFs> -n <taxon-name> -m <TIdeS.pkl-file>
 ```
 
 # List of all options
@@ -117,21 +102,22 @@ tides -i <Predicted-ORFs> -n <taxon-name> -m <TIdeS.pkl-file>
 | `-h`, `--help`  | Print the help message |
 | `-i`, `--fin <STRING>`  | FASTA formatted file. |
 | `-o`, `--taxon <STRING>`  | Name for your taxon, project, outputs. |
-| `-k`, `--kraken <STRING>`  | kraken2 database to identify and filter non-eukaryotic sequences. |
 | `-t`, `--threads <INTEGER>`  | Number of available threads to use. Default value is `4`. |
-| '-d`, `--db <STRING>`  | Path to FASTA or DIAMOND formatted proteome database. |
+| `-d`, `--db <STRING>`  | Path to FASTA or DIAMOND formatted proteome database. |
 | `-p`, `--partials`  | Include partial ORFs for ORF calling. |
 | `-id`, `--id <INTEGER>`  | Minimum % identity to remove redundant transcripts. Default value is `97`. |
 | `-l`, `--min-orf <INTEGER>`  | Minimum transcript length (bp) for ORF calling. Default value is `300`. |
 | `-ml`, `--max-orf <INTEGER>`  | Maximum transcript length (bp) for ORF calling. Default value is `10000`. |
 | `-e`, `--evalue <REAL>`  | Maximum e-value to infer reference ORFs. Default value is `1e-30`. |
+| `--memory <INTEGER>`  | memory limit (MB) for CD-HIT. Default value is `2000`, unlimited is `0`. |
 | `-g`, `--gencode <STRING/INTEGER>`  | Genetic code to use to for ORF calling and translation. Default is `1`. |
 | `-s`, `--strand <STRING>`  | Strands to call ORFs (both/minus/plus). Default value is `both`. |
 | `-c`, `--contam <STRING>`  | Path to annotated sequence table. If unset, TIdeS will assume a prior model is provided as well. |
+| `-k`, `--kraken <STRING>`  | kraken2 database to identify and filter non-eukaryotic sequences. |
 | `--no-filter` | Skip the rRNA and transcript clustering steps. |
 | `m`, `--model <STRING>`  | Path to a prior TIdeS run's model. These are the ".pkl" files. |
 | `--kmer <INTEGER>`  | kmer length to use. Default value is `3`. |
-| `-ov`, `--overlap`  | Permit overlapping kmers. |
+| `--overlap`  | Permit overlapping kmers. |
 | `--step <INTEGER>`  | Step-size for overlapping kmers. Default value is `kmer-length/2`. | 
 | `--clean`  | Remove intermediate filter-step files. |
 | `-gz`, `--gzip`  | Compress TIdeS outputs when finished. | 
