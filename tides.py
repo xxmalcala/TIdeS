@@ -105,7 +105,7 @@ def collect_args():
     '''--min-orf (-l)        minimum ORF length (bp) to evaluate (default = 300)\n'''
     '''--max-orf (-ml)       maximum ORF length (bp) to evaluate (default = 10000)\n'''
     '''--evalue (-e)         maximum e-value to infer reference ORFs\n'''
-    '''                      (default = 1e-30)\n'''
+    '''                      (default = 1e-10)\n'''
     '''--gencode (-g)        genetic code to use to translate ORFs\n'''
     '''--strand (-s)         query strands to call ORFs\n'''
     '''                      (both/minus/plus, default = both)'''))
@@ -134,7 +134,7 @@ def collect_args():
         help = argparse.SUPPRESS)
 
     porf.add_argument('--evalue', '-e', action = 'store',
-        default = 1e-30, metavar = '[e-value]', type = float,
+        default = 1e-10, metavar = '[e-value]', type = float,
 
         help = argparse.SUPPRESS)
 
@@ -180,7 +180,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.2.0
+     Version 1.3.0
     """
     return alv_msg
 
@@ -627,6 +627,7 @@ def init_log_stats(args):
 
 def main():
 
+
     """Note to self:
     Add method to check the sister-summary table format...
 
@@ -723,3 +724,5 @@ def main():
     if not args.quiet:
         print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Finished running TIdeS')
         print('\n#--------- Thanks for using TIdeS! ---------#\n')
+
+main()
