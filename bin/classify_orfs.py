@@ -35,9 +35,9 @@ def objective_svm(trial, X_features, X_labels, threads):
 
     params = {
         'C': trial.suggest_float('C', 1e-8, 10),
-        'kernel': trial.suggest_categorical('kernel', ['linear', 'rbf']),
+        'kernel': 'rbf',
         'random_state': random.randint(0,10000),
-        'tol': trial.suggest_float('tol', 1e-10, 1e-2),
+        'tol': trial.suggest_float('tol', 1e-6, 1e-2),
         }
 
     clf = SVC(**params)
@@ -63,7 +63,7 @@ def train_model(train_data, threads, contam):
     study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_jobs = int(threads), n_trials = 100)
 
     opt_trial = study.best_trial
-    print(study.best_params)
+    # print(study.best_params)
 
     opt_clf = SVC(probability = True, cache_size = 500, random_state = random.randint(0,10000), **opt_trial.params)
 
