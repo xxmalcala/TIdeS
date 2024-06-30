@@ -19,8 +19,9 @@ import numpy as np
 
 from sklearn.dummy import DummyClassifier
 from sklearn.svm import SVC
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split, cross_val_score, TunedThresholdClassifierCV
+from sklearn.metrics import classification_report, make_scorer, f1_score
+
 
 def objective_svm(trial, X_features, X_labels, threads):
     train_x, test_x, train_y, test_y = train_test_split(
@@ -31,13 +32,16 @@ def objective_svm(trial, X_features, X_labels, threads):
                                         random_state = random.randint(0,10000),
                                         stratify = X_labels
                                         )
+
     params = {
         'C': trial.suggest_float('C', 1e-8, 10),
         'kernel': trial.suggest_categorical('kernel', ['linear', 'rbf']),
         'random_state': random.randint(0,10000),
+        'tol': trial.suggest_float('tol', 1e-10, 1e-2),
         }
 
     clf = SVC(**params)
+
     clf_score = cross_val_score(
                     clf,
                     train_x,
@@ -45,7 +49,6 @@ def objective_svm(trial, X_features, X_labels, threads):
                     n_jobs = int(threads),
                     cv = 5
                     ).mean()
-
     return clf_score
 
 
@@ -60,8 +63,9 @@ def train_model(train_data, threads, contam):
     study.optimize(lambda trial: objective_svm(trial, X_features, X_labels, threads), n_jobs = int(threads), n_trials = 100)
 
     opt_trial = study.best_trial
+    print(study.best_params)
 
-    opt_clf = SVC(probability = True, random_state = random.randint(0,10000), **opt_trial.params)
+    opt_clf = SVC(probability = True, cache_size = 500, random_state = random.randint(0,10000), **opt_trial.params)
 
     dm_clf = DummyClassifier(strategy = "stratified", random_state = random.randint(0,10000))
 
@@ -74,16 +78,25 @@ def train_model(train_data, threads, contam):
                                         stratify = X_labels
                                         )
 
-    opt_clf.fit(train_x, train_y)
+    if not contam:
+        scorer = make_scorer(f1_score, pos_label = 1)
+        tuned_opt_clf = TunedThresholdClassifierCV(opt_clf, scoring = scorer, n_jobs = int(threads))
+
+        scorer(tuned_opt_clf.fit(train_x, train_y), train_x, train_y)
+        opt_preds = tuned_opt_clf.predict(test_x)
+
+    else:
+        opt_clf.fit(train_x, train_y)
+        opt_preds = opt_clf.predict(test_x)
+
     dm_clf.fit(train_x, train_y)
 
-    opt_preds = opt_clf.predict(test_x)
     dm_preds = dm_clf.predict(test_x)
 
     opt_clf_report = classification_report(test_y, opt_preds)
     dm_clf_report = classification_report(test_y, dm_preds)
 
-    return opt_clf, study, (opt_clf_report, dm_clf_report)
+    return tuned_opt_clf, study, (opt_clf_report, dm_clf_report)
 
 
 def parse_qpreds(q_names, q_preds, eval_names, contam = False):
@@ -92,6 +105,7 @@ def parse_qpreds(q_names, q_preds, eval_names, contam = False):
     for n in range(0, len(q_preds)):
         if contam:
             summary[q_names[n]] += [f'{eval_names[np.argmax(q_preds[n])]}']
+
             for i in q_preds[n]:
                 summary[q_names[n]] += [f'{i:.3f}']
 
@@ -113,10 +127,11 @@ def distance(co1, co2):
 
 def best_preds(pred_list):
     preds_to_keep = []
+
     crf_evals = sorted([i for i in pred_list if 'CRF' in i], key = lambda x: (-float(x[-1]), -int(x[1].split()[2].split(':')[-1])))
+    # crf_evals = sorted([i for i in pred_list if 'CRF' in i], key = lambda x: (-float(x[-1]), -int(x[1].split('_')[4])))
 
     if crf_evals:
-
         preds_to_keep = [crf_evals[0]]
         coords_eval = [tuple(sorted(int(i) for i in crf_evals[0][1].split(':')[-1].split('(')[0].split('-')))]
 
