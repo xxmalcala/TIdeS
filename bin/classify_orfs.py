@@ -3,7 +3,7 @@
 """
 Controls the training and prediction steps for TIdeS.
 
-Dependencies include: Optuna, Scikit-learn.
+Dependencies include: Optuna, NumPy, Scikit-learn.
 """
 
 import pickle
@@ -24,6 +24,21 @@ from sklearn.metrics import classification_report, make_scorer, f1_score
 
 
 def objective_svm(trial, X_features, X_labels, threads):
+    """
+    Runs and evaluates Optuna trials
+
+    Parameters
+    ----------
+    trial:       Optuna trial to run/evaluate
+    X_features:  training features for hyperparameter tuning
+    X_labels:    feature labels for evaluating hyperparameter tunings
+    threads:     number of threads to use for training
+
+    Returns
+    ----------
+    clf_score:  classifier tuning score
+    """
+
     train_x, test_x, train_y, test_y = train_test_split(
                                         X_features,
                                         X_labels,
@@ -53,7 +68,24 @@ def objective_svm(trial, X_features, X_labels, threads):
 
 
 def train_model(train_data, threads, contam):
+    """
+    Manages SVC model training, calling upon Optuna
+
+    Parameters
+    ----------
+    train_data:  dataframe with training data features and associated labels
+    threads:     number of threads to use for training
+    contam:      True if evaluating contamination
+
+    Returns
+    ----------
+    opt_clf:       hyperparameter optimized SVC model
+    study:         outputs of the Optuna tuning
+    *_clf_report:  classifier performance summaries
+    """
+
     X_features, X_labels = train_data[1:]
+
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
     # optuna.logging.set_verbosity(optuna.logging.INFO)
@@ -78,16 +110,17 @@ def train_model(train_data, threads, contam):
                                         stratify = X_labels
                                         )
 
+
     if not contam:
         scorer = make_scorer(f1_score, pos_label = 1)
-        tuned_opt_clf = TunedThresholdClassifierCV(opt_clf, scoring = scorer, n_jobs = int(threads))
+        opt_clf = TunedThresholdClassifierCV(opt_clf, scoring = scorer, n_jobs = int(threads))
 
-        scorer(tuned_opt_clf.fit(train_x, train_y), train_x, train_y)
-        opt_preds = tuned_opt_clf.predict(test_x)
+        scorer(opt_clf.fit(train_x, train_y), train_x, train_y)
 
     else:
         opt_clf.fit(train_x, train_y)
-        opt_preds = opt_clf.predict(test_x)
+
+    opt_preds = opt_clf.predict(test_x)
 
     dm_clf.fit(train_x, train_y)
 
@@ -96,10 +129,25 @@ def train_model(train_data, threads, contam):
     opt_clf_report = classification_report(test_y, opt_preds)
     dm_clf_report = classification_report(test_y, dm_preds)
 
-    return tuned_opt_clf, study, (opt_clf_report, dm_clf_report)
+    return opt_clf, study, (opt_clf_report, dm_clf_report)
 
 
 def parse_qpreds(q_names, q_preds, eval_names, contam = False):
+    """
+    Parses the query ORFs and returns the prediction summary from the SVC
+
+    Parameters
+    ----------
+    q_names:     Query ORF names
+    q_preds:     Probability of the query ORF being in or out of frame
+    eval_names:  List of classification categories (binary for ORFs, potentially multi-class for contamination)
+    contam:      Whether the evaluations are for contamination
+
+    Returns
+    ----------
+    summary:  summary of query ORF classifications
+    """
+
     summary = defaultdict(list)
 
     for n in range(0, len(q_preds)):
@@ -121,11 +169,36 @@ def parse_qpreds(q_names, q_preds, eval_names, contam = False):
 
 
 def distance(co1, co2):
-    # Capture distance between two sets of points
+    """
+    Capture distance between two sets of points
+
+    Parameters
+    ----------
+    co1:  position 1
+    co2:  position 2
+
+    Returns
+    ----------
+    distance between positions/coordinates
+    """
+
     return ((abs(co1[0] - co2[0])**2) + (abs(co1[1] - co2[1])**2))**0.5
 
 
 def best_preds(pred_list):
+    """
+    Keeps the best predictions per transcript. For ORF-calling, prioritized by probability of being in-frame,
+    then by length (longer chosen over shorter). For contam, simply by classified group.
+
+    Parameters
+    ----------
+    pred_list:  summary of predictions
+
+    Returns
+    ----------
+    preds_to_keep:  list of best predictions
+    """
+
     preds_to_keep = []
 
     crf_evals = sorted([i for i in pred_list if 'CRF' in i], key = lambda x: (-float(x[-1]), -int(x[1].split()[2].split(':')[-1])))
@@ -150,6 +223,25 @@ def best_preds(pred_list):
 
 
 def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: int = -1, model = None, contam = False, verb = True):
+    """
+    Manages the ORF classification
+
+    Parameters
+    ----------
+    taxon_code:  species/taxon name or abbreviated code
+    start_time:  start time for current step
+    train_data:  dataframe with training data features and associated labels
+    query_data:  dataframe with query ORF features and ORF names
+    threads:     number of threads to use
+    model:       user-provided pre-trained model
+    contam:      True if evaluating contamination
+    verb:        print verbose messages
+
+    Returns
+    ----------
+    query_summary:  prediction summary for the query datasets
+    trained_clf:    optuna optimized SVC model
+    """
 
     clf_dir = f'{taxon_code}_TIdeS/Classification/'
     clf_tsv = f'{clf_dir}{taxon_code}.TIdeS_Classification.tsv'

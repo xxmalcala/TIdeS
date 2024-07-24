@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 """
-Something something...
+Methods for saving important data:
+ - Trained TIdeS model
+ - TIdeS model parameters
+ - (Un)Translated ORFs
 
-
-Dependencies include: Optuna, Scikit-learn, and XGBoost.
+Dependencies include: BioPython
 """
 
 import pickle, sys
@@ -16,10 +18,6 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 
-"""Need to add a log file with params, so that if given those data, then all options
-are set to be the same...
-
-This can be stored in the TIdeS.pkl file too..."""
 
 
 def save_model(taxon_code, overlap, kmer, step, cvec, clf):
