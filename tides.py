@@ -18,11 +18,11 @@ import argparse, glob, logging, os, pickle, shutil, sys, time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from tides.bin import filt_seqs as ft
-from tides.bin import orf_call as oc
-from tides.bin import orf_prep as op
-from tides.bin import classify_orfs as co
-from tides.bin import save_preds as sp
+from bin import filt_seqs as ft
+from bin import orf_call as oc
+from bin import orf_prep as op
+from bin import classify_orfs as co
+from bin import save_preds as sp
 
 
 def collect_args():
@@ -180,7 +180,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.3.0
+     Version 1.3.4.1
     """
     return alv_msg
 
@@ -485,10 +485,6 @@ def eval_contam(fasta_file: str,
                                 verb
                                 )
 
-    if model:
-        with open(model, 'rb') as f:
-            overlap, kmer, step, cvec, clf = pickle.load(f)
-
     if verb:
         if not model:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training and query ORFs for {taxon_code}')
@@ -626,18 +622,6 @@ def init_log_stats(args):
 
 
 def main():
-
-
-    """Note to self:
-    Add method to check the sister-summary table format...
-
-    Requirements:
-    -- Tab-delimited
-    -- Target/Non-Target OR 1/0
-
-    Also provide options for multi-classes (e.g., not solely current binary approach)...
-    """
-
     args = collect_args()
 
     if not oc.gcode_start_stops(args.gencode):
