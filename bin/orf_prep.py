@@ -132,7 +132,7 @@ def chunk_seq(seq: str, contam: bool, overlap: bool, kmer: int, step: int):
     return ' '.join(kmer_list)
 
 
-def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: str, partial: bool = False, cvec = None, contam: bool = False, overlap: bool = False, kmer: int = 3, step = None):
+def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: str, partial: bool = False, training: bool = False, cvec = None, contam: bool = False, overlap: bool = False, kmer: int = 3, step = None):
     """
     Generates the training and query arrays for subsequent classification.
 
@@ -161,21 +161,23 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: 
     train_labels, train_seqs, train_class = [],[],[]
     query_labels, query_seqs = [],[]
 
-    for k, v in query_orfs_dict.items():
-        if not contam:
-            if not partial and 'orf_type:complete' in k:
+    if not training:
+
+        for k, v in query_orfs_dict.items():
+            if not contam:
+                if not partial and 'orf_type:complete' in k:
+                        query_seqs.append(chunk_seq(v, contam, overlap, kmer, step))
+                        query_labels.append(k)
+                else:
                     query_seqs.append(chunk_seq(v, contam, overlap, kmer, step))
                     query_labels.append(k)
             else:
                 query_seqs.append(chunk_seq(v, contam, overlap, kmer, step))
                 query_labels.append(k)
-        else:
-            query_seqs.append(chunk_seq(v, contam, overlap, kmer, step))
-            query_labels.append(k)
 
-    if cvec:
-        X_query_orfs = np.array([i/sum(i) for i in cvec.transform(query_seqs).toarray()])
-        return None, (query_labels, X_query_orfs), cvec
+        if cvec:
+            X_query_orfs = np.array([i/sum(i) for i in cvec.transform(query_seqs).toarray()])
+            return None, (query_labels, X_query_orfs), cvec
 
     if not contam:
         train_orfs_dict = randomize_orientation(train_orfs_dict, taxon_code)
@@ -187,7 +189,11 @@ def kmer_ngram_counts(train_orfs_dict: dict, query_orfs_dict: dict, taxon_code: 
 
     cvec = CountVectorizer(ngram_range = (1,1))
 
-    X_query_orfs = np.array([i/sum(i) for i in cvec.fit_transform(query_seqs).toarray()])
-    X_train_orfs = np.array([i/sum(i) for i in cvec.transform(train_seqs).toarray()])
+    X_train_orfs = np.array([i/sum(i) for i in cvec.fit_transform(train_seqs).toarray()])
 
-    return (train_labels, X_train_orfs, train_class), (query_labels, X_query_orfs), cvec
+    if not training:
+        X_query_orfs = np.array([i/sum(i) for i in cvec.transform(query_seqs).toarray()])
+        return (train_labels, X_train_orfs, train_class), (query_labels, X_query_orfs), cvec
+
+    else:
+        return (train_labels, X_train_orfs, train_class), None, cvec

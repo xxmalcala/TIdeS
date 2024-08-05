@@ -10,7 +10,7 @@ Returns the putative ORFs and their sequences from all transcripts.
 Dependencies include: BioPython, NumPy.
 """
 
-import os, re, subprocess, sys, time
+import os, random, re, subprocess, sys, time
 
 from datetime import timedelta
 from pathlib import Path
@@ -499,8 +499,11 @@ def generate_ref_orfs(fasta_file: str, taxon_code: str, start_time, dmnd_db: str
     ref_orf_db: dictionary of reference ORFs
     """
 
+    orf_dir = f'{taxon_code}_TIdeS/ORF_Calling/'
+
+    Path(orf_dir).mkdir(exist_ok = True, parents = True)
+
     ref_orf_db = {}
-    ref_orfs = []
 
     if verb:
         print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Running DIAMOND BLASTX against protein database')
@@ -515,14 +518,19 @@ def generate_ref_orfs(fasta_file: str, taxon_code: str, start_time, dmnd_db: str
         if seq_rec.id in dmnd_hits:
             orf_pos = [int(j) for j in dmnd_hits[seq_rec.id][4:6]]
             orf = f'{seq_rec.seq[min(orf_pos)-1:max(orf_pos)]}'
+            if len(orf) < 300:
+                continue
 
             if orf_pos[0] > orf_pos[1]:
                 ref_orf_db[seq_rec.id] = f'{Seq(orf).reverse_complement()}'
-                ref_orfs.append(SeqRecord(Seq(orf).reverse_complement(),seq_rec.id,'',''))
 
             else:
                 ref_orf_db[seq_rec.id] = orf
-                ref_orfs.append(SeqRecord(Seq(orf),seq_rec.id,'',''))
+
+    if len(ref_orf_db) > 5000:
+        ref_orf_ids = list(ref_orf_db.keys())
+        random.shuffle(ref_orf_ids)
+        ref_orf_db = {k: v for k, v in ref_orf_db.items() if k in ref_orf_ids[:5000]}
 
     return ref_orf_db
 

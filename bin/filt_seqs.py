@@ -362,8 +362,11 @@ def prep_contam(fasta_file: str, taxon_code: str, sis_smry: str, kraken_db: str,
     fasta_file:  FASTA formatted file
     taxon_code:  species/taxon name or abbreviated code
     sis_smry:    tab-delimited file with user-defined "target" and "non-target" sequences
-    pretrained:  random forest model from previous TIdeS run
+    kraken_db:   path to kraken-database for identifying prokaryotic contaminants (broadly)
+    training:    train model, but perform no predictions
+    model:       random forest model from previous TIdeS run
     start_time:  initial timestamp to track runtime
+    threads:     number of cpu threads to use
     verb:        verbose print statements
 
     Returns

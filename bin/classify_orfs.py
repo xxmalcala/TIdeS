@@ -222,7 +222,7 @@ def best_preds(pred_list):
     return preds_to_keep
 
 
-def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: int = -1, model = None, contam = False, verb = True):
+def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: int = -1, model = None, training: bool = False, contam: bool = False, verb: bool = True):
     """
     Manages the ORF classification
 
@@ -253,8 +253,6 @@ def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: 
 
     Path(clf_dir).mkdir(exist_ok = True, parents = True)
 
-    query_names, query_features = query_data
-
     if model:
         trained_clf = model
 
@@ -270,53 +268,60 @@ def classify_orfs(taxon_code: str, start_time, train_data, query_data, threads: 
             w.write('"Dummy"-Classification-Report\n')
             w.write(f'{clf_scrs[1]}')
 
-    if verb:
-        print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Classifying ORFs')
-
-    trained_clf_qpreds = trained_clf.predict_proba(query_data[1])
-
-
-    if not contam:
-        eval_names = ['OOF', 'CRF']
-    else:
-
-        eval_names = trained_clf.classes_
-        tmp = '\t'.join([f'Prob-{name}' for name in eval_names])
-        contam_header = f'ORF\tEvaluation\t{tmp}\n'
-
-    query_summary = parse_qpreds(query_data[0], trained_clf_qpreds, eval_names, contam)
-
-    with open(clf_tsv, 'w+') as w:
-        if contam:
-            w.write(contam_header)
-            for k, v in query_summary.items():
-                x = '\t'.join(v)
-                w.write(f'{k}\t{x}\n')
-
-        else:
-            w.write(non_contam_header)
-            for k, v in query_summary.items():
-                for i in v:
-                    x = '\t'.join(i)
-                    w.write(f'{k}\t{x}\n')
-    if not model:
         with open(clf_stdy, 'wb') as fout:
             pickle.dump(opt_study, fout)
 
-    if not contam:
-        query_best_preds = {}
-        for k, v in query_summary.items():
-            bps = best_preds(v)
-            if bps:
-                query_best_preds[k] = bps
 
-        with open(clf_tp_sb_tsv, 'w+') as w:
-            w.write(non_contam_header)
-            for k, v in query_best_preds.items():
-                if v:
-                    x = '\t'.join(v[0])
+    if not training:
+
+        if verb:
+            print(f'[{timedelta(seconds=round(time.time()-start_time))}]  Classifying ORFs')
+
+        query_names, query_features = query_data
+
+        trained_clf_qpreds = trained_clf.predict_proba(query_data[1])
+
+        if not contam:
+            eval_names = ['OOF', 'CRF']
+        else:
+
+            eval_names = trained_clf.classes_
+            tmp = '\t'.join([f'Prob-{name}' for name in eval_names])
+            contam_header = f'ORF\tEvaluation\t{tmp}\n'
+
+        query_summary = parse_qpreds(query_data[0], trained_clf_qpreds, eval_names, contam)
+
+        with open(clf_tsv, 'w+') as w:
+            if contam:
+                w.write(contam_header)
+                for k, v in query_summary.items():
+                    x = '\t'.join(v)
                     w.write(f'{k}\t{x}\n')
 
-        return (query_summary, query_best_preds), trained_clf
+            else:
+                w.write(non_contam_header)
+                for k, v in query_summary.items():
+                    for i in v:
+                        x = '\t'.join(i)
+                        w.write(f'{k}\t{x}\n')
 
-    return query_summary, trained_clf
+        if not contam:
+            query_best_preds = {}
+            for k, v in query_summary.items():
+                bps = best_preds(v)
+                if bps:
+                    query_best_preds[k] = bps
+
+            with open(clf_tp_sb_tsv, 'w+') as w:
+                w.write(non_contam_header)
+                for k, v in query_best_preds.items():
+                    if v:
+                        x = '\t'.join(v[0])
+                        w.write(f'{k}\t{x}\n')
+
+            return (query_summary, query_best_preds), trained_clf
+
+        return query_summary, trained_clf
+
+    else:
+        return None, trained_clf

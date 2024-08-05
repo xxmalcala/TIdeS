@@ -35,8 +35,7 @@ def collect_args():
     '''--fin (-i)            input file in FASTA format\n'''
     '''--taxon (-o)          taxon or output name\n'''
     '''--threads (-t)        number of CPU threads (default = 1)\n'''
-    '''--kraken (-k)         kraken2 database to identify and filter\n'''
-    '''                      non-eukaryotic sequences\n'''
+    '''--train-only          run TIdeS through training (no predictions)\n'''
     '''--no-filter           skip the rRNA and transcript clustering steps\n'''
     '''--model (-m)          previously trained TIdeS model (".pkl" file)\n'''
     '''--kmer                kmer size for generating sequence features (default = 3)\n'''
@@ -62,8 +61,7 @@ def collect_args():
         default = 1, metavar = '[Threads]', type = int,
         help = argparse.SUPPRESS)
 
-    g.add_argument('--kraken','-k', action = 'store',
-        metavar = '[Kraken2 Database]', type = str, default = None,
+    g.add_argument('--train-only', action = 'store_true',
         help = argparse.SUPPRESS)
 
     g.add_argument('--no-filter', action = 'store_true',
@@ -146,9 +144,16 @@ def collect_args():
         default = 'both', type = str, help = argparse.SUPPRESS)
 
     cntm = parser.add_argument_group('Contamination-Calling Options', description = (
-    '''--contam (-c)         table of annotated sequences\n'''))
+    '''--contam (-c)         table of annotated sequences\n'''
+    '''--kraken (-k)         kraken2 database to identify and filter\n'''
+    '''                      non-eukaryotic sequences\n'''))
+
 
     cntm.add_argument('--contam','-c', nargs = '?', const = True,
+        help = argparse.SUPPRESS)
+
+    cntm.add_argument('--kraken','-k', action = 'store',
+        metavar = '[Kraken2 Database]', type = str, default = None,
         help = argparse.SUPPRESS)
 
     # Ensures that just script description provided if no arguments provided
@@ -180,7 +185,7 @@ def ascii_logo_vsn():
        | |  | |/ _` / -_)__ \\
        |_| |___\__,_\___|___/
 
-     Version 1.3.4.1
+     Version 1.3.5
     """
     return alv_msg
 
@@ -238,8 +243,8 @@ def predict_orfs(
         fasta_file: str,
         taxon_code:str,
         dmnd_db: str,
-        kraken_db: str,
         partial: bool,
+        training: bool,
         filter: bool,
         gcode: str,
         kmer: int,
@@ -265,11 +270,12 @@ def predict_orfs(
     taxon_code:  species/taxon name or abbreviated code
     dmnd_db:     path to a protein database for DIAMOND
     partial:     evaluate partial ORFs
+    training:    train model, but perform no predictions
     gcode:       genetic code used for ORF-calling and translation steps
     kmer:        kmer size (number of nt) to convert sequences into
     overlap:     overlapping kmers permitted if True
     step:        step-size for overlapping kmers
-    model:       pickle file from previous TIdeS run
+    model:       pretrained model from previous TIdeS run
     min_len:     minimum ORF length to consider
     max_len:     maximum ORF length to consider
     pid:         percent identity (0-1.0) for removing redundant sequences
@@ -283,7 +289,7 @@ def predict_orfs(
     """
 
     sttime = time.time()
-    ref_orfs = ref_orf_fas = cvec = clf = None
+    ref_orfs = ref_orf_fas = putative_orfs = porf_fas = cvec = clf = None
     stop_codons, rstop_codons, ttable = oc.gcode_start_stops(gcode)
 
     if model:
@@ -306,7 +312,7 @@ def predict_orfs(
                     fasta_file,
                     taxon_code,
                     sttime,
-                    kraken_db,
+                    None,
                     filter,
                     min_len,
                     max_len,
@@ -323,9 +329,11 @@ def predict_orfs(
     logging.info(f'Filtered Transcripts:  {sfilt_seqs}')
 
     if verb:
-        if not model:
+        if not model and not training:
             print('\n#------- Calling Training and pORFs --------#')
-        else:
+        elif not model and training:
+            print('\n#--------- Calling Training ORFs -----------#')
+        elif model  :
             print('\n#------------- Calling pORFs ---------------#')
 
     logging.info(
@@ -334,19 +342,19 @@ def predict_orfs(
         f'+---------------------------------+'
         )
 
-    putative_orfs, porf_fas = oc.capture_pORFs(
-                                    filt_fas,
-                                    taxon_code,
-                                    sttime,
-                                    gcode,
-                                    min_len,
-                                    partial,
-                                    strand,
-                                    verb
-                                    )
+    if not training:
+        putative_orfs, porf_fas = oc.capture_pORFs(
+                                        filt_fas,
+                                        taxon_code,
+                                        sttime,
+                                        gcode,
+                                        min_len,
+                                        partial,
+                                        strand,
+                                        verb
+                                        )
 
-    porf_count = len(putative_orfs)
-    logging.info(f'\nPutative ORFs Called:  {porf_count}')
+        logging.info(f'\nPutative ORFs Called:  {len(putative_orfs)}')
 
     if not model:
         ref_orfs = oc.generate_ref_orfs(
@@ -361,8 +369,10 @@ def predict_orfs(
                                     )
 
     if verb:
-        if not model:
+        if not model and not training:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training and query ORFs for {taxon_code}')
+        if not model and training:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training ORFs for {taxon_code}')
         else:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing query ORFs for {taxon_code}')
 
@@ -371,6 +381,7 @@ def predict_orfs(
                                     putative_orfs,
                                     taxon_code,
                                     partial,
+                                    training,
                                     cvec,
                                     False,
                                     overlap,
@@ -388,17 +399,24 @@ def predict_orfs(
                         query_data,
                         threads,
                         clf,
+                        training,
                         False,
                         verb
                         )
 
-    tds_orfs = len(clf_summary[1])
-    logging.info(f'TIdeS ORF Predictions: {tds_orfs}')
+    if not training:
+
+        tds_orfs = len(clf_summary[1])
+        logging.info(f'TIdeS ORF Predictions: {tds_orfs}')
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
-        print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
-                ' Making FASTA files and storing TIdeS model')
+        if not training:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
+                    ' Making FASTA files and storing TIdeS model')
+        else:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
+                    ' Storing TIdeS model')
 
     sp.save_model(
         taxon_code,
@@ -409,13 +427,14 @@ def predict_orfs(
         clf
         )
 
-    sp.save_seqs(
-        taxon_code,
-        putative_orfs,
-        clf_summary,
-        ttable,
-        True
-        )
+    if not training:
+        sp.save_seqs(
+            taxon_code,
+            putative_orfs,
+            clf_summary,
+            ttable,
+            True
+            )
 
     logging.info(
         f'\n+---------------------------------+\n'\
@@ -423,9 +442,11 @@ def predict_orfs(
         f'+---------------------------------+'
         )
 
-    logging.info(f'\nPredicted ORFs:   {taxon_code}_TIdeS/{taxon_code}.TIdeS.fasta')
     logging.info(f'Trained Model:    {taxon_code}_TIdeS/{taxon_code}.TIdeS.pkl')
-    logging.info(f'Classifications:  {taxon_code}_TIdeS/Classification/{taxon_code}.TIdeS_Classification.tsv')
+
+    if not training:
+        logging.info(f'\nPredicted ORFs:   {taxon_code}_TIdeS/{taxon_code}.TIdeS.fasta')
+        logging.info(f'Classifications:  {taxon_code}_TIdeS/Classification/{taxon_code}.TIdeS_Classification.tsv')
 
     return sttime
 
@@ -434,6 +455,7 @@ def eval_contam(fasta_file: str,
                 taxon_code: str,
                 contam_list: str,
                 kraken_db: list,
+                training: bool,
                 gcode: str,
                 kmer: int,
                 overlap: bool,
@@ -447,18 +469,21 @@ def eval_contam(fasta_file: str,
 
     Parameters
     ----------
-    fasta_file: FASTA formatted transcriptome file
-    taxon_code: species/taxon name or abbreviated code
-    sister_summary: tab-delimited file with user-defined "target" and "non-target" sequences
-    gcode: genetic code used for ORF-calling and translation steps
-    pretrained: random forest model from previous TIdeS run
-    min_len: minimum ORF length to consider
-    threads: number of cpu threads to use
-    verb: verbose print statements
+    fasta_file:   FASTA formatted transcriptome file
+    taxon_code:   species/taxon name or abbreviated code
+    contam_list:  tab-delimited file with user-defined "target" and "non-target" sequences
+    kraken_db:    kraken-database for identifying prokaryotic contaminants (broadly)
+    training:     train model, but perform no predictions
+    gcode:        genetic code used for ORF-calling and translation steps
+    kmer:         kmer size (number of nt) to convert sequences into
+    overlap:      overlapping kmers permitted if True
+    step:         step-size for overlapping kmers
+    model:        pre-trained model from previous TIdeS run
+    threads:      number of cpu threads to use
+    verb:         verbose print statements
 
     Returns current time to track overall runtime
     """
-
 
     sttime = time.time()
     cvec = clf = None
@@ -486,8 +511,10 @@ def eval_contam(fasta_file: str,
                                 )
 
     if verb:
-        if not model:
+        if not model and not training:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training and query ORFs for {taxon_code}')
+        if not model and training:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training ORFs for {taxon_code}')
         else:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing query ORFs for {taxon_code}')
 
@@ -496,13 +523,13 @@ def eval_contam(fasta_file: str,
                                     query_orfs,
                                     taxon_code,
                                     False,
+                                    training,
                                     cvec,
                                     True,
                                     overlap,
                                     kmer,
                                     step
                                     )
-
 
     if verb:
         print('\n#----------- ORF Classification ------------#')
@@ -514,14 +541,19 @@ def eval_contam(fasta_file: str,
                         query_data,
                         threads,
                         clf,
+                        training,
                         True,
                         verb
                         )
 
     if verb:
         print('\n#---------- Saving TIdeS Outputs -----------#')
-        print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
-                ' Making FASTA files and storing TIdeS model')
+        if not training:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
+                    ' Making FASTA files and storing TIdeS model')
+        else:
+            print(f'[{timedelta(seconds=round(time.time()-sttime))}] '
+                    ' Storing TIdeS model')
 
     sp.save_model(
         taxon_code,
@@ -532,35 +564,37 @@ def eval_contam(fasta_file: str,
         clf
         )
 
-    orf_classes = sp.save_seqs(
-                    taxon_code,
-                    query_orfs,
-                    clf_summary,
-                    ttable,
-                    True,
-                    True
-                    )
-    logging.info(
-        f'\n+---------------------------------+\n'\
-        f'|     Classification Summary      |\n'\
-        f'+---------------------------------+'
-        )
+    if not training:
+        orf_classes = sp.save_seqs(
+                        taxon_code,
+                        query_orfs,
+                        clf_summary,
+                        ttable,
+                        True,
+                        True
+                        )
 
-    tds_cls_fas = []
-    orig_seqs = open(fasta_file).read().count('>')
+    if not training:
+        logging.info(
+            f'\n+---------------------------------+\n'\
+            f'|     Classification Summary      |\n'\
+            f'+---------------------------------+'
+            )
 
-    logging.info(f'\nInitial ORFs:       {orig_seqs}')
+        tds_cls_fas = []
+        orig_seqs = open(fasta_file).read().count('>')
 
+        logging.info(f'\nInitial ORFs:       {orig_seqs}')
 
-    for k in list(orf_classes):
-        cf = f'{taxon_code}_TIdeS/{taxon_code}.TIdeS.{k}.fasta'
-        cf_cnt = open(cf).read().count('>')
+        for k in list(orf_classes):
+            cf = f'{taxon_code}_TIdeS/{taxon_code}.TIdeS.{k}.fasta'
+            cf_cnt = open(cf).read().count('>')
 
-        x = f'{k} ORFs:'.ljust(20)
+            x = f'{k} ORFs:'.ljust(20)
 
-        logging.info(f'{x}{cf_cnt}')
+            logging.info(f'{x}{cf_cnt}')
 
-        tds_cls_fas.append(f'\n     {cf}')
+            tds_cls_fas.append(f'\n     {cf}')
 
     logging.info(
         f'\n+---------------------------------+\n'\
@@ -569,8 +603,10 @@ def eval_contam(fasta_file: str,
         )
 
     logging.info(f'Trained Model:        {taxon_code}_TIdeS/{taxon_code}.TIdeS.pkl')
-    logging.info(f'Classifications:      {taxon_code}_TIdeS/Classification/{taxon_code}.TIdeS_Classification.tsv')
-    logging.info(f'Classified ORFs:{"".join(tds_cls_fas)}')
+
+    if not training:
+        logging.info(f'Classifications:      {taxon_code}_TIdeS/Classification/{taxon_code}.TIdeS_Classification.tsv')
+        logging.info(f'Classified ORFs:{"".join(tds_cls_fas)}')
 
     return sttime
 
@@ -646,8 +682,8 @@ def main():
         sttime = predict_orfs(args.fin,
                                 args.taxon,
                                 args.db,
-                                args.kraken,
                                 args.partial,
+                                args.train_only,
                                 args.no_filter,
                                 args.gencode,
                                 args.kmer,
@@ -682,6 +718,7 @@ def main():
                             args.taxon,
                             args.contam,
                             args.kraken,
+                            args.train_only,
                             args.gencode,
                             args.kmer,
                             args.overlap,
