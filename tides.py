@@ -373,7 +373,7 @@ def predict_orfs(
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training and query ORFs for {taxon_code}')
         if not model and training:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training ORFs for {taxon_code}')
-        else:
+        if model:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing query ORFs for {taxon_code}')
 
     train_data, query_data, cvec = op.kmer_ngram_counts(
@@ -515,7 +515,7 @@ def eval_contam(fasta_file: str,
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training and query ORFs for {taxon_code}')
         if not model and training:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing training ORFs for {taxon_code}')
-        else:
+        if model:
             print(f'[{timedelta(seconds=round(time.time()-sttime))}]  Preparing query ORFs for {taxon_code}')
 
     train_data, query_data, cvec = op.kmer_ngram_counts(

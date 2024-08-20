@@ -355,8 +355,11 @@ def prepare_pORF_seqs(seq_num: int, seq_name: str, seq: str, coord: list, fstop:
         elif porf[:3] != 'ATG' and porf[-3:] in fstop:
             comp = 'orf_type:5prime_partial'
 
-        else:
+        elif porf[:3] == 'ATG' and porf[-3:] not in fstop:
             comp = 'orf_type:3prime_partial'
+
+        else:
+            comp = 'orf_type:incomplete'
 
         porf_full_name = f'{porf_name} {comp} {porf_len} {seq_name}:{max(coord)}-{min(coord)+1}(-)'
 

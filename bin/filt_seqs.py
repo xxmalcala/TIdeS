@@ -156,6 +156,7 @@ def run_kraken2(fasta_file: str, taxon_code: str, out_dir: str, kraken_db: str, 
     krak_out = f'{out_dir}{taxon_code}.Kraken2_Txnmy.txt'
 
     krak_cmd = 'kraken2 --confidence 0.1 ' \
+                f'--memory-mapping ' \
                 f'--db {kraken_db} ' \
                 f'--threads {threads} ' \
                 f'--output {krak_out} ' \
